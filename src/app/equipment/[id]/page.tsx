@@ -179,9 +179,9 @@ export default function EquipmentDetail() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-sm font-semibold text-slate-900">{equipment.name}</h1>
-                  <span className="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{equipment.equipment_id}</span>
+                  <span className="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{equipment.equipment_id}</span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">{equipment.department} · {equipment.location}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{equipment.department} · {equipment.location}</p>
               </div>
             </div>
           </div>
@@ -238,13 +238,13 @@ export default function EquipmentDetail() {
                   <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{qual.phase}</span>
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{qual.phase}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-md border font-medium ${QUAL_STATUS_STYLES[qual.status] || QUAL_STATUS_STYLES["Pending"]}`}>
                           {qual.status}
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-slate-900">{info?.full}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{info?.desc}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{info?.desc}</p>
                     </div>
                   </div>
                   <div className="px-5 py-4 space-y-3">
@@ -293,7 +293,7 @@ export default function EquipmentDetail() {
                         <Detail label="Approval Date" value={qual.approval_date ? new Date(qual.approval_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
                         {qual.remarks && (
                           <div className="col-span-2">
-                            <p className="text-xs font-medium text-slate-400 mb-0.5">Remarks</p>
+                            <p className="text-xs font-medium text-slate-500 mb-0.5">Remarks</p>
                             <p className="text-sm text-slate-600 leading-relaxed">{qual.remarks}</p>
                           </div>
                         )}
@@ -343,7 +343,7 @@ export default function EquipmentDetail() {
                   <Detail label="Next Due Date" value={equipment.next_due_date ? new Date(equipment.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
                   {equipment.notes && (
                     <div className="col-span-2 md:col-span-3">
-                      <p className="text-xs font-medium text-slate-400 mb-1">Notes</p>
+                      <p className="text-xs font-medium text-slate-500 mb-1">Notes</p>
                       <p className="text-sm text-slate-600 leading-relaxed">{equipment.notes}</p>
                     </div>
                   )}
@@ -357,20 +357,20 @@ export default function EquipmentDetail() {
         {activeTab === "audit" && (
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             {auditLog.length === 0 ? (
-              <div className="py-16 text-center text-sm text-slate-400">No audit entries yet.</div>
+              <div className="py-16 text-center text-sm text-slate-500">No audit entries yet.</div>
             ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100">
                     {["Date & Time", "Action", "Details", "Changed By"].map((h) => (
-                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {auditLog.map((entry, i) => (
                     <tr key={entry.id} className={`border-b border-slate-50 ${i === auditLog.length - 1 ? "border-b-0" : ""}`}>
-                      <td className="px-5 py-3 text-xs text-slate-400 whitespace-nowrap">
+                      <td className="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">
                         {new Date(entry.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </td>
                       <td className="px-5 py-3 text-sm font-medium text-slate-700">{entry.action}</td>
@@ -408,9 +408,9 @@ export default function EquipmentDetail() {
 function Detail({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
     <div>
-      <p className="text-xs font-medium text-slate-400 mb-0.5">{label}</p>
+      <p className="text-xs font-medium text-slate-500 mb-0.5">{label}</p>
       <p className={`text-sm ${mono ? "font-mono font-semibold text-slate-600" : "text-slate-900 font-medium"}`}>
-        {value || <span className="text-slate-300">—</span>}
+        {value || <span className="text-slate-400">—</span>}
       </p>
     </div>
   );

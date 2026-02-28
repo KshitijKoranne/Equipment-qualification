@@ -64,7 +64,7 @@ function PhaseBar({ dq, iq, oq, pq }: { dq: string; iq: string; oq: string; pq: 
       {phases.map((p) => (
         <div key={p.label} className="flex flex-col items-center gap-0.5">
           <div className={`w-6 h-1.5 rounded-sm ${PHASE_COLOR[p.status] || "bg-slate-200"}`} title={`${p.label}: ${p.status || "Pending"}`} />
-          <span className="text-[9px] text-slate-400 font-medium">{p.label}</span>
+          <span className="text-[9px] text-slate-500 font-semibold">{p.label}</span>
         </div>
       ))}
     </div>
@@ -150,7 +150,7 @@ export default function Dashboard() {
             { label: "Qualified", value: stats.qualified, sub: `${qualifiedPct}% of total`, color: "text-emerald-600" },
             { label: "In Progress", value: stats.inProgress, sub: "qualification ongoing", color: "text-blue-600" },
             { label: "Overdue / Due", value: stats.overdue, sub: "action required", color: "text-red-600" },
-            { label: "Not Started", value: stats.notStarted, sub: "pending initiation", color: "text-slate-400" },
+            { label: "Not Started", value: stats.notStarted, sub: "pending initiation", color: "text-slate-600" },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4">
               <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
@@ -248,7 +248,7 @@ export default function Dashboard() {
                         <PhaseBar dq={eq.dq_status} iq={eq.iq_status} oq={eq.oq_status} pq={eq.pq_status} />
                       </td>
                       <td className="px-5 py-3.5"><StatusBadge status={eq.status} /></td>
-                      <td className="px-5 py-3.5 text-sm text-slate-400">
+                      <td className="px-5 py-3.5 text-sm text-slate-600">
                         {eq.next_due_date ? new Date(eq.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                       </td>
                     </tr>

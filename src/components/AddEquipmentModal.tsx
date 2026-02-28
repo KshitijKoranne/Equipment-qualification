@@ -66,7 +66,7 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <h2 className="text-base font-semibold text-slate-900">Add New Equipment</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Register equipment for qualification tracking</p>
+            <p className="text-xs text-slate-500 mt-0.5">Register equipment for qualification tracking</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
             <X size={16} className="text-slate-500" />
@@ -78,7 +78,7 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
           <div className="px-6 py-5 space-y-5">
             {/* Section: Identification */}
             <div>
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Identification</h3>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Identification</h3>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Equipment ID *" name="equipment_id" value={form.equipment_id} onChange={handleChange} placeholder="e.g. HPLC-001" />
                 <Field label="Equipment Name *" name="name" value={form.name} onChange={handleChange} placeholder="e.g. HPLC System" />
@@ -94,7 +94,7 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
 
             {/* Section: Equipment Details */}
             <div>
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Equipment Details</h3>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Equipment Details</h3>
               <div className="grid grid-cols-3 gap-4">
                 <Field label="Manufacturer" name="manufacturer" value={form.manufacturer} onChange={handleChange} placeholder="e.g. Agilent" />
                 <Field label="Model" name="model" value={form.model} onChange={handleChange} placeholder="e.g. 1260 Infinity" />
