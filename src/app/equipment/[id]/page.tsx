@@ -175,7 +175,9 @@ export default function EquipmentDetail() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">{equipment.name}</h1>
-                  <span style={{ background: "var(--bg-tag)", color: "var(--text-tag)" }} className="text-xs font-mono font-semibold px-2 py-0.5 rounded">{equipment.equipment_id}</span>
+                  {equipment.equipment_id && !equipment.equipment_id.startsWith('PENDING-') && (
+                    <span style={{ background: "var(--bg-tag)", color: "var(--text-tag)" }} className="text-xs font-mono font-semibold px-2 py-0.5 rounded">{equipment.equipment_id}</span>
+                  )}
                 </div>
                 <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5">{equipment.department} · {equipment.location}</p>
               </div>
@@ -446,7 +448,7 @@ export default function EquipmentDetail() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-                  <Detail label="Equipment ID (Tag No.)" value={equipment.equipment_id} mono />
+                  <Detail label="Equipment ID (Tag No.)" value={equipment.equipment_id?.startsWith('PENDING-') ? 'ID Pending' : equipment.equipment_id} mono />
                   <Detail label="Equipment Name"         value={equipment.name} />
                   <Detail label="Type"                   value={equipment.type} />
                   <Detail label="Department"             value={equipment.department} />

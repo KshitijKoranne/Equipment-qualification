@@ -33,12 +33,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name, Type, Department and Location are required." }, { status: 400 });
 
     const result = await db.execute({
-      sql: `INSERT INTO equipment (name, type, department, location, manufacturer, model,
+      sql: `INSERT INTO equipment (equipment_id, name, type, department, location, manufacturer, model,
             serial_number, notes, status, change_control_number, urs_number, urs_approval_date, capacity)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Not Started', ?, ?, ?, ?)`,
-      args: [name, type, department, location,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Started', ?, ?, ?, ?)`,
+      args: [
+        `PENDING-${Date.now()}`,  // placeholder until user assigns real tag number
+        name, type, department, location,
         manufacturer || null, model || null, serial_number || null, notes || null,
-        change_control_number || null, urs_number || null, urs_approval_date || null, capacity || null],
+        change_control_number || null, urs_number || null, urs_approval_date || null, capacity || null,
+      ],
     });
 
     const newId = Number(result.lastInsertRowid);
