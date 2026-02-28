@@ -65,7 +65,11 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, urs_attachment: ursFile }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to add equipment"); }
+      if (!res.ok) {
+        let msg = `Request failed (${res.status})`;
+        try { const d = await res.json(); msg = d.error || msg; } catch { /* non-JSON body */ }
+        throw new Error(msg);
+      }
       onSuccess();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An error occurred");
