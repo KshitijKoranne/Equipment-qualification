@@ -28,11 +28,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     name, type, department, location,
-    manufacturer, model, serial_number, installation_date,
-    requalification_frequency, requalification_tolerance, notes,
-    // New fields
+    manufacturer, model, serial_number, notes,
     change_control_number, urs_number, urs_approval_date, capacity,
-    // URS PDF attachment (optional, base64)
     urs_attachment,
   } = body;
 
@@ -41,14 +38,11 @@ export async function POST(req: NextRequest) {
 
   const result = await db.execute({
     sql: `INSERT INTO equipment (name, type, department, location, manufacturer, model,
-          serial_number, installation_date, requalification_frequency, requalification_tolerance,
-          notes, status, change_control_number, urs_number, urs_approval_date, capacity)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Started', ?, ?, ?, ?)`,
+          serial_number, notes, status, change_control_number, urs_number, urs_approval_date, capacity)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Not Started', ?, ?, ?, ?)`,
     args: [
       name, type, department, location,
       manufacturer || null, model || null, serial_number || null,
-      installation_date || null,
-      requalification_frequency || "Annual", requalification_tolerance || "1",
       notes || null,
       change_control_number || null, urs_number || null,
       urs_approval_date || null, capacity || null,

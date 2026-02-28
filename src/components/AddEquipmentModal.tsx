@@ -32,7 +32,6 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
     manufacturer: "",
     model: "",
     serial_number: "",
-    installation_date: "",
     // Requalification intentionally excluded — set during OQ phase editing
     notes: "",
   });
@@ -181,10 +180,6 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
                   onChange={set} placeholder="e.g. 1260 Infinity" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
                 <Field label="Serial Number" name="serial_number" value={form.serial_number}
                   onChange={set} placeholder="e.g. SN-12345" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-              </div>
-              <div className="mt-4">
-                <Field label="Installation Date" name="installation_date" type="date" value={form.installation_date}
-                  onChange={set} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
               </div>
             </section>
 
