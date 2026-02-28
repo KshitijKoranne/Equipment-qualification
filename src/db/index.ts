@@ -1,10 +1,8 @@
 import { createClient } from "@libsql/client";
-import path from "path";
-
-const dbPath = path.resolve(process.cwd(), "dev.db");
 
 export const db = createClient({
-  url: `file:${dbPath}`,
+  url: process.env.TURSO_DATABASE_URL ?? "file:./dev.db",
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 export async function initDB() {
