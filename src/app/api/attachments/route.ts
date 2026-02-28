@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, initDB } from "@/db";
+import { db, ensureDB } from "@/db";
 
-let initialized = false;
-async function ensureDB() {
-  if (!initialized) { await initDB(); initialized = true; }
-}
 
 // POST: upload attachment (base64 encoded)
 export async function POST(req: NextRequest) {

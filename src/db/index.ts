@@ -7,6 +7,13 @@ export const db = createClient({
 
 export const ALL_PHASES = ["URS", "DQ", "FAT", "SAT", "IQ", "OQ", "PQ"];
 
+// Module-level init promise — runs once per serverless instance, all routes share it
+let _initPromise: Promise<void> | null = null;
+export function ensureDB(): Promise<void> {
+  if (!_initPromise) _initPromise = initDB();
+  return _initPromise;
+}
+
 export async function initDB() {
   // Core tables
   await db.execute(`CREATE TABLE IF NOT EXISTS equipment (
