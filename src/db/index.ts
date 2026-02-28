@@ -5,7 +5,7 @@ export const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-export const ALL_PHASES = ["URS", "DQ", "FAT", "IQ", "OQ", "PQ", "Requalification"];
+export const ALL_PHASES = ["URS", "DQ", "FAT", "SAT", "IQ", "OQ", "PQ", "Requalification"];
 
 export async function initDB() {
   await db.executeMultiple(`

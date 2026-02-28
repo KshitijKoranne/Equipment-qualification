@@ -31,14 +31,15 @@ type Breakdown = {
 const PHASE_INFO: Record<string, { full: string; desc: string }> = {
   URS:              { full: "User Requirement Specification", desc: "Documents what the user requires the equipment to do — the foundation of all qualification activities" },
   DQ:               { full: "Design Qualification",          desc: "Documented verification that the proposed design meets URS and regulatory requirements" },
-  FAT:              { full: "Factory Acceptance Testing",     desc: "Testing performed at the manufacturer's facility before shipment to verify equipment meets specifications" },
+  FAT:              { full: "Factory Acceptance Testing",  desc: "Testing performed at the manufacturer's facility before shipment to verify equipment meets design specifications" },
+  SAT:              { full: "Site Acceptance Testing",     desc: "Testing performed after installation at the user's site to confirm equipment functions correctly in its actual environment" },
   IQ:               { full: "Installation Qualification",    desc: "Verified that equipment is installed correctly per manufacturer specs and approved drawings" },
   OQ:               { full: "Operational Qualification",     desc: "Equipment functions within operational specifications under controlled conditions including worst-case" },
   PQ:               { full: "Performance Qualification",     desc: "Equipment performs consistently under real-world production conditions using actual materials" },
   Requalification:  { full: "Requalification",               desc: "Periodic requalification to confirm equipment continues to perform within validated parameters" },
 };
 
-const PHASE_ORDER = ["URS", "DQ", "FAT", "IQ", "OQ", "PQ", "Requalification"];
+const PHASE_ORDER = ["URS", "DQ", "FAT", "SAT", "IQ", "OQ", "PQ", "Requalification"];
 const STATUS_OPTIONS = ["Pending", "In Progress", "Passed", "Failed", "Waived", "Not Applicable"];
 
 const QUAL_BADGE: Record<string, { bg: string; text: string; border: string }> = {

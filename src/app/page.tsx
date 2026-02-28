@@ -9,7 +9,7 @@ type Equipment = {
   id: number; equipment_id: string; name: string; type: string;
   department: string; location: string; status: string;
   next_due_date: string;
-  urs_status: string; dq_status: string; fat_status: string;
+  urs_status: string; dq_status: string; fat_status: string; sat_status: string;
   iq_status: string; oq_status: string; pq_status: string; rq_status: string;
 };
 
@@ -39,11 +39,11 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function PhaseBar({ urs, dq, fat, iq, oq, pq, rq }: { urs: string; dq: string; fat: string; iq: string; oq: string; pq: string; rq: string }) {
+function PhaseBar({ urs, dq, fat, sat, iq, oq, pq, rq }: { urs: string; dq: string; fat: string; sat: string; iq: string; oq: string; pq: string; rq: string }) {
   const phases = [
     { label: "URS", status: urs }, { label: "DQ", status: dq }, { label: "FAT", status: fat },
-    { label: "IQ", status: iq }, { label: "OQ", status: oq }, { label: "PQ", status: pq },
-    { label: "RQ", status: rq },
+    { label: "SAT", status: sat }, { label: "IQ", status: iq }, { label: "OQ", status: oq },
+    { label: "PQ", status: pq }, { label: "RQ", status: rq },
   ];
   return (
     <div className="flex gap-0.5 items-center">
@@ -221,7 +221,7 @@ export default function Dashboard() {
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.type}</td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.department}</td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.location}</td>
-                      <td className="px-5 py-3.5"><PhaseBar urs={eq.urs_status} dq={eq.dq_status} fat={eq.fat_status} iq={eq.iq_status} oq={eq.oq_status} pq={eq.pq_status} rq={eq.rq_status} /></td>
+                      <td className="px-5 py-3.5"><PhaseBar urs={eq.urs_status} dq={eq.dq_status} fat={eq.fat_status} sat={eq.sat_status} iq={eq.iq_status} oq={eq.oq_status} pq={eq.pq_status} rq={eq.rq_status} /></td>
                       <td className="px-5 py-3.5"><StatusBadge status={eq.status} /></td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>
                         {eq.next_due_date ? new Date(eq.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}

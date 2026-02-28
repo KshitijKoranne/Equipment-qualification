@@ -13,6 +13,7 @@ export async function GET() {
       (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'URS' ORDER BY q.id DESC LIMIT 1) as urs_status,
       (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'DQ'  ORDER BY q.id DESC LIMIT 1) as dq_status,
       (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'FAT' ORDER BY q.id DESC LIMIT 1) as fat_status,
+      (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'SAT' ORDER BY q.id DESC LIMIT 1) as sat_status,
       (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'IQ'  ORDER BY q.id DESC LIMIT 1) as iq_status,
       (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'OQ'  ORDER BY q.id DESC LIMIT 1) as oq_status,
       (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'PQ'  ORDER BY q.id DESC LIMIT 1) as pq_status,
