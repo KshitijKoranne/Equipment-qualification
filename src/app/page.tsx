@@ -8,7 +8,9 @@ import ThemeToggle from "@/components/ThemeToggle";
 type Equipment = {
   id: number; equipment_id: string; name: string; type: string;
   department: string; location: string; status: string;
-  next_due_date: string; dq_status: string; iq_status: string; oq_status: string; pq_status: string;
+  next_due_date: string;
+  urs_status: string; dq_status: string; fat_status: string;
+  iq_status: string; oq_status: string; pq_status: string; rq_status: string;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; bgVar: string; textVar: string; borderVar: string; dotBg: string; icon: React.ComponentType<{ size?: number }> }> = {
@@ -35,13 +37,18 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function PhaseBar({ dq, iq, oq, pq }: { dq: string; iq: string; oq: string; pq: string }) {
+function PhaseBar({ urs, dq, fat, iq, oq, pq, rq }: { urs: string; dq: string; fat: string; iq: string; oq: string; pq: string; rq: string }) {
+  const phases = [
+    { label: "URS", status: urs }, { label: "DQ", status: dq }, { label: "FAT", status: fat },
+    { label: "IQ", status: iq }, { label: "OQ", status: oq }, { label: "PQ", status: pq },
+    { label: "RQ", status: rq },
+  ];
   return (
-    <div className="flex gap-1 items-center">
-      {[{ label: "DQ", status: dq }, { label: "IQ", status: iq }, { label: "OQ", status: oq }, { label: "PQ", status: pq }].map((p) => (
+    <div className="flex gap-0.5 items-center">
+      {phases.map((p) => (
         <div key={p.label} className="flex flex-col items-center gap-0.5">
-          <div style={{ background: PHASE_DOT[p.status] || "var(--border)" }} className="w-6 h-1.5 rounded-sm" title={`${p.label}: ${p.status || "Pending"}`} />
-          <span style={{ color: "var(--text-muted)" }} className="text-[9px] font-semibold">{p.label}</span>
+          <div style={{ background: PHASE_DOT[p.status] || "var(--border)" }} className="w-5 h-1.5 rounded-sm" title={`${p.label}: ${p.status || "Pending"}`} />
+          <span style={{ color: "var(--text-muted)" }} className="text-[8px] font-semibold">{p.label}</span>
         </div>
       ))}
     </div>
@@ -212,7 +219,7 @@ export default function Dashboard() {
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.type}</td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.department}</td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.location}</td>
-                      <td className="px-5 py-3.5"><PhaseBar dq={eq.dq_status} iq={eq.iq_status} oq={eq.oq_status} pq={eq.pq_status} /></td>
+                      <td className="px-5 py-3.5"><PhaseBar urs={eq.urs_status} dq={eq.dq_status} fat={eq.fat_status} iq={eq.iq_status} oq={eq.oq_status} pq={eq.pq_status} rq={eq.rq_status} /></td>
                       <td className="px-5 py-3.5"><StatusBadge status={eq.status} /></td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>
                         {eq.next_due_date ? new Date(eq.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}

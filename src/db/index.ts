@@ -5,6 +5,8 @@ export const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
+export const ALL_PHASES = ["URS", "DQ", "FAT", "IQ", "OQ", "PQ", "Requalification"];
+
 export async function initDB() {
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS equipment (
@@ -42,6 +44,17 @@ export async function initDB() {
       FOREIGN KEY (equipment_id) REFERENCES equipment(id)
     );
 
+    CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      qualification_id INTEGER NOT NULL,
+      file_name TEXT NOT NULL,
+      file_size INTEGER,
+      file_type TEXT,
+      file_data TEXT NOT NULL,
+      uploaded_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (qualification_id) REFERENCES qualifications(id)
+    );
+
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       equipment_id INTEGER NOT NULL,
@@ -53,10 +66,30 @@ export async function initDB() {
     );
   `);
 
-  // Add tolerance column if upgrading existing DB (safe to run multiple times)
-  try {
-    await db.execute(`ALTER TABLE equipment ADD COLUMN requalification_tolerance TEXT DEFAULT '1'`);
-  } catch {
-    // Column already exists, ignore
+  // Safe migrations for existing DBs
+  const migrations = [
+    `ALTER TABLE equipment ADD COLUMN requalification_tolerance TEXT DEFAULT '1'`,
+    `ALTER TABLE qualifications ADD COLUMN approved_by TEXT`,
+  ];
+  for (const sql of migrations) {
+    try { await db.execute(sql); } catch { /* column exists */ }
+  }
+
+  // Add new phases to existing equipment that only have 4 phases
+  const equipList = await db.execute(`SELECT id FROM equipment`);
+  for (const eq of equipList.rows) {
+    const existingPhases = await db.execute({
+      sql: `SELECT phase FROM qualifications WHERE equipment_id = ?`,
+      args: [eq.id as number],
+    });
+    const existing = existingPhases.rows.map((r) => r.phase as string);
+    for (const phase of ALL_PHASES) {
+      if (!existing.includes(phase)) {
+        await db.execute({
+          sql: `INSERT INTO qualifications (equipment_id, phase, status) VALUES (?, ?, 'Pending')`,
+          args: [eq.id as number, phase],
+        });
+      }
+    }
   }
 }

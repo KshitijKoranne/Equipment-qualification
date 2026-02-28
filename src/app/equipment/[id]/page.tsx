@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Edit2, Save, X, CheckCircle2, Clock, AlertTriangle, XCircle, Activity, Trash2, FlaskConical } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import AttachmentPanel from "@/components/AttachmentPanel";
 
 type Equipment = {
   id: number; equipment_id: string; name: string; type: string;
@@ -11,36 +12,42 @@ type Equipment = {
   requalification_frequency: string; requalification_tolerance: string;
   next_due_date: string; notes: string;
 };
-type Qualification = { id: number; phase: string; protocol_number: string; execution_date: string; approval_date: string; approved_by: string; status: string; remarks: string; };
+type Qualification = {
+  id: number; phase: string; protocol_number: string; execution_date: string;
+  approval_date: string; approved_by: string; status: string; remarks: string;
+};
 type AuditEntry = { id: number; action: string; details: string; changed_by: string; created_at: string; };
 
 const PHASE_INFO: Record<string, { full: string; desc: string }> = {
-  DQ: { full: "Design Qualification",       desc: "Documented verification that proposed design meets requirements" },
-  IQ: { full: "Installation Qualification", desc: "Verified that equipment is installed correctly per manufacturer specs" },
-  OQ: { full: "Operational Qualification",  desc: "Equipment functions within operational specifications under controlled conditions" },
-  PQ: { full: "Performance Qualification",  desc: "Equipment performs consistently under real-world production conditions" },
+  URS:              { full: "User Requirement Specification", desc: "Documents what the user requires the equipment to do — the foundation of all qualification activities" },
+  DQ:               { full: "Design Qualification",          desc: "Documented verification that the proposed design meets URS and regulatory requirements" },
+  FAT:              { full: "Factory Acceptance Testing",     desc: "Testing performed at the manufacturer's facility before shipment to verify equipment meets specifications" },
+  IQ:               { full: "Installation Qualification",    desc: "Verified that equipment is installed correctly per manufacturer specs and approved drawings" },
+  OQ:               { full: "Operational Qualification",     desc: "Equipment functions within operational specifications under controlled conditions including worst-case" },
+  PQ:               { full: "Performance Qualification",     desc: "Equipment performs consistently under real-world production conditions using actual materials" },
+  Requalification:  { full: "Requalification",               desc: "Periodic requalification to confirm equipment continues to perform within validated parameters" },
 };
 
-const STATUS_OPTIONS = ["Pending", "In Progress", "Passed", "Failed", "Waived"];
+const PHASE_ORDER = ["URS", "DQ", "FAT", "IQ", "OQ", "PQ", "Requalification"];
+const STATUS_OPTIONS = ["Pending", "In Progress", "Passed", "Failed", "Waived", "Not Applicable"];
 
 const QUAL_BADGE: Record<string, { bg: string; text: string; border: string }> = {
-  Passed:      { bg: "--qbadge-pass-bg", text: "--qbadge-pass-text", border: "--qbadge-pass-border" },
-  Failed:      { bg: "--qbadge-fail-bg", text: "--qbadge-fail-text", border: "--qbadge-fail-border" },
-  "In Progress": { bg: "--qbadge-prog-bg", text: "--qbadge-prog-text", border: "--qbadge-prog-border" },
-  Pending:     { bg: "--qbadge-pend-bg", text: "--qbadge-pend-text", border: "--qbadge-pend-border" },
-  Waived:      { bg: "--qbadge-waiv-bg", text: "--qbadge-waiv-text", border: "--qbadge-waiv-border" },
+  Passed:           { bg: "--qbadge-pass-bg", text: "--qbadge-pass-text", border: "--qbadge-pass-border" },
+  Failed:           { bg: "--qbadge-fail-bg", text: "--qbadge-fail-text", border: "--qbadge-fail-border" },
+  "In Progress":    { bg: "--qbadge-prog-bg", text: "--qbadge-prog-text", border: "--qbadge-prog-border" },
+  Pending:          { bg: "--qbadge-pend-bg", text: "--qbadge-pend-text", border: "--qbadge-pend-border" },
+  Waived:           { bg: "--qbadge-waiv-bg", text: "--qbadge-waiv-text", border: "--qbadge-waiv-border" },
+  "Not Applicable": { bg: "--qbadge-pend-bg", text: "--qbadge-pend-text", border: "--qbadge-pend-border" },
 };
 
 const EQUIP_STATUS: Record<string, { bg: string; text: string; icon: React.ComponentType<{ size?: number }> }> = {
-  Qualified:            { bg: "--badge-qual-bg", text: "--badge-qual-text", icon: CheckCircle2 },
-  "In Progress":        { bg: "--badge-prog-bg", text: "--badge-prog-text", icon: Activity },
-  "Not Started":        { bg: "--badge-none-bg", text: "--badge-none-text", icon: Clock },
-  Overdue:              { bg: "--badge-over-bg", text: "--badge-over-text", icon: XCircle },
-  Failed:               { bg: "--badge-fail-bg", text: "--badge-fail-text", icon: AlertTriangle },
-  "Requalification Due":{ bg: "--badge-warn-bg", text: "--badge-warn-text", icon: AlertTriangle },
+  Qualified:              { bg: "--badge-qual-bg", text: "--badge-qual-text", icon: CheckCircle2 },
+  "In Progress":          { bg: "--badge-prog-bg", text: "--badge-prog-text", icon: Activity },
+  "Not Started":          { bg: "--badge-none-bg", text: "--badge-none-text", icon: Clock },
+  Overdue:                { bg: "--badge-over-bg", text: "--badge-over-text", icon: XCircle },
+  Failed:                 { bg: "--badge-fail-bg", text: "--badge-fail-text", icon: AlertTriangle },
+  "Requalification Due":  { bg: "--badge-warn-bg", text: "--badge-warn-text", icon: AlertTriangle },
 };
-
-const PHASE_DOT: Record<string, string> = { Passed: "#3fb950", Failed: "#f85149", "In Progress": "#58a6ff", Pending: "var(--border)" };
 
 export default function EquipmentDetail() {
   const params = useParams();
@@ -64,10 +71,14 @@ export default function EquipmentDetail() {
       const res = await fetch(`/api/equipment/${id}`);
       const data = await res.json();
       setEquipment(data.equipment);
-      setQualifications(data.qualifications);
+      // Sort qualifications by PHASE_ORDER
+      const sorted = [...data.qualifications].sort(
+        (a: Qualification, b: Qualification) => PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase)
+      );
+      setQualifications(sorted);
       setAuditLog(data.auditLog);
       setEditForm(data.equipment);
-      setEditQuals(data.qualifications);
+      setEditQuals(sorted);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [id]);
@@ -77,7 +88,11 @@ export default function EquipmentDetail() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch(`/api/equipment/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...editForm, qualifications: editQuals }) });
+      await fetch(`/api/equipment/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editForm, qualifications: editQuals }),
+      });
       setEditing(false);
       fetchData();
     } catch (e) { console.error(e); }
@@ -109,6 +124,7 @@ export default function EquipmentDetail() {
 
   const eqStatus = EQUIP_STATUS[equipment.status] || EQUIP_STATUS["Not Started"];
   const StatusIcon = eqStatus.icon;
+  const displayQuals = editing ? editQuals : qualifications;
 
   return (
     <div style={{ background: "var(--bg-base)", minHeight: "100vh" }}>
@@ -187,77 +203,116 @@ export default function EquipmentDetail() {
 
         {/* Qualification Phases */}
         {activeTab === "qualification" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {(editing ? editQuals : qualifications).map((qual) => {
-              const info = PHASE_INFO[qual.phase];
-              const qb = QUAL_BADGE[qual.status] || QUAL_BADGE["Pending"];
-              return (
-                <div key={qual.id} style={surfaceStyle} className="rounded-xl overflow-hidden">
-                  <div style={{ borderBottom: "1px solid var(--border-light)" }} className="px-5 py-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span style={{ color: "var(--text-muted)" }} className="text-xs font-bold uppercase tracking-widest">{qual.phase}</span>
-                      <span style={{ background: `var(${qb.bg})`, color: `var(${qb.text})`, borderColor: `var(${qb.border})` }}
-                        className="text-xs px-2 py-0.5 rounded-md border font-medium">{qual.status}</span>
-                    </div>
-                    <p style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">{info?.full}</p>
-                    <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5 leading-relaxed">{info?.desc}</p>
-                  </div>
-                  <div className="px-5 py-4 space-y-3">
-                    {editing ? (
-                      <>
-                        <div>
-                          <label style={labelStyle} className="block text-xs font-medium mb-1">Status</label>
-                          <select value={qual.status} onChange={(e) => updateQual(qual.id, "status", e.target.value)} style={inputStyle} className={inputCls}>
-                            {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
-                          </select>
+          <>
+            {/* Phase progress strip */}
+            <div style={surfaceStyle} className="rounded-xl p-4 mb-6 overflow-x-auto">
+              <div className="flex items-center gap-0 min-w-max">
+                {PHASE_ORDER.map((phase, idx) => {
+                  const qual = displayQuals.find((q) => q.phase === phase);
+                  const status = qual?.status || "Pending";
+                  const dotColor = status === "Passed" ? "#3fb950" : status === "Failed" ? "#f85149" : status === "In Progress" ? "#58a6ff" : status === "Waived" ? "#c084fc" : "var(--border)";
+                  return (
+                    <div key={phase} className="flex items-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <div style={{ background: dotColor, width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {status === "Passed" && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
+                          {status === "Failed" && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✗</span>}
+                          {(status === "Pending" || status === "Not Applicable") && <span style={{ color: "var(--text-muted)", fontSize: 10, fontWeight: 700 }}>{idx + 1}</span>}
+                          {status === "In Progress" && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>…</span>}
+                          {status === "Waived" && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>W</span>}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          {[
-                            { label: "Protocol No.", field: "protocol_number", placeholder: "e.g. EQ-IQ-001" },
-                            { label: "Approved By", field: "approved_by", placeholder: "Name" },
-                          ].map(({ label, field, placeholder }) => (
-                            <div key={field}>
-                              <label style={labelStyle} className="block text-xs font-medium mb-1">{label}</label>
-                              <input value={(qual as unknown as Record<string, string>)[field] || ""} onChange={(e) => updateQual(qual.id, field, e.target.value)}
-                                style={inputStyle} className={inputCls} placeholder={placeholder} />
-                            </div>
-                          ))}
-                          {[
-                            { label: "Execution Date", field: "execution_date" },
-                            { label: "Approval Date", field: "approval_date" },
-                          ].map(({ label, field }) => (
-                            <div key={field}>
-                              <label style={labelStyle} className="block text-xs font-medium mb-1">{label}</label>
-                              <input type="date" value={(qual as unknown as Record<string, string>)[field] || ""} onChange={(e) => updateQual(qual.id, field, e.target.value)}
-                                style={inputStyle} className={inputCls} />
-                            </div>
-                          ))}
-                        </div>
-                        <div>
-                          <label style={labelStyle} className="block text-xs font-medium mb-1">Remarks</label>
-                          <textarea value={qual.remarks || ""} onChange={(e) => updateQual(qual.id, "remarks", e.target.value)} rows={2}
-                            style={inputStyle} className={`${inputCls} resize-none`} placeholder="Observations, deviations..." />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                        <Detail label="Protocol No." value={qual.protocol_number} />
-                        <Detail label="Approved By" value={qual.approved_by} />
-                        <Detail label="Execution Date" value={qual.execution_date ? new Date(qual.execution_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
-                        <Detail label="Approval Date" value={qual.approval_date ? new Date(qual.approval_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
-                        {qual.remarks && (
-                          <div className="col-span-2">
-                            <p style={labelStyle} className="text-xs font-medium mb-0.5">Remarks</p>
-                            <p style={{ color: "var(--text-secondary)" }} className="text-sm leading-relaxed">{qual.remarks}</p>
-                          </div>
-                        )}
+                        <span style={{ color: "var(--text-muted)", fontSize: 10, fontWeight: 600 }}>{phase}</span>
                       </div>
-                    )}
+                      {idx < PHASE_ORDER.length - 1 && (
+                        <div style={{ height: 2, width: 32, background: status === "Passed" ? "#3fb950" : "var(--border)", marginBottom: 16 }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Phase cards — 2 columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {displayQuals.map((qual) => {
+                const info = PHASE_INFO[qual.phase];
+                const qb = QUAL_BADGE[qual.status] || QUAL_BADGE["Pending"];
+                return (
+                  <div key={qual.id} style={surfaceStyle} className="rounded-xl overflow-hidden">
+                    {/* Phase header */}
+                    <div style={{ borderBottom: "1px solid var(--border-light)" }} className="px-5 py-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span style={{ color: "var(--text-muted)" }} className="text-xs font-bold uppercase tracking-widest">{qual.phase}</span>
+                        <span style={{ background: `var(${qb.bg})`, color: `var(${qb.text})`, borderColor: `var(${qb.border})` }}
+                          className="text-xs px-2 py-0.5 rounded-md border font-medium">{qual.status}</span>
+                      </div>
+                      <p style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">{info?.full}</p>
+                      <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5 leading-relaxed">{info?.desc}</p>
+                    </div>
+
+                    {/* Phase fields */}
+                    <div className="px-5 py-4 space-y-3">
+                      {editing ? (
+                        <>
+                          <div>
+                            <label style={labelStyle} className="block text-xs font-medium mb-1">Status</label>
+                            <select value={qual.status} onChange={(e) => updateQual(qual.id, "status", e.target.value)} style={inputStyle} className={inputCls}>
+                              {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { label: "Protocol No.", field: "protocol_number", placeholder: `e.g. EQ-${qual.phase}-001` },
+                              { label: "Approved By",  field: "approved_by",     placeholder: "Name" },
+                            ].map(({ label, field, placeholder }) => (
+                              <div key={field}>
+                                <label style={labelStyle} className="block text-xs font-medium mb-1">{label}</label>
+                                <input value={(qual as unknown as Record<string, string>)[field] || ""}
+                                  onChange={(e) => updateQual(qual.id, field, e.target.value)}
+                                  style={inputStyle} className={inputCls} placeholder={placeholder} />
+                              </div>
+                            ))}
+                            {[
+                              { label: "Execution Date", field: "execution_date" },
+                              { label: "Approval Date",  field: "approval_date" },
+                            ].map(({ label, field }) => (
+                              <div key={field}>
+                                <label style={labelStyle} className="block text-xs font-medium mb-1">{label}</label>
+                                <input type="date" value={(qual as unknown as Record<string, string>)[field] || ""}
+                                  onChange={(e) => updateQual(qual.id, field, e.target.value)}
+                                  style={inputStyle} className={inputCls} />
+                              </div>
+                            ))}
+                          </div>
+                          <div>
+                            <label style={labelStyle} className="block text-xs font-medium mb-1">Remarks</label>
+                            <textarea value={qual.remarks || ""} onChange={(e) => updateQual(qual.id, "remarks", e.target.value)} rows={2}
+                              style={inputStyle} className={`${inputCls} resize-none`} placeholder="Observations, deviations..." />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                          <Detail label="Protocol No." value={qual.protocol_number} />
+                          <Detail label="Approved By"  value={qual.approved_by} />
+                          <Detail label="Execution Date" value={qual.execution_date ? new Date(qual.execution_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                          <Detail label="Approval Date"  value={qual.approval_date  ? new Date(qual.approval_date ).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                          {qual.remarks && (
+                            <div className="col-span-2">
+                              <p style={labelStyle} className="text-xs font-medium mb-0.5">Remarks</p>
+                              <p style={{ color: "var(--text-secondary)" }} className="text-sm leading-relaxed">{qual.remarks}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Attachments — always visible */}
+                    <AttachmentPanel qualificationId={qual.id} />
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Equipment Details */}
@@ -274,19 +329,18 @@ export default function EquipmentDetail() {
                   ].map(({ label, key }) => (
                     <div key={key}>
                       <label style={labelStyle} className="block text-xs font-medium mb-1.5">{label}</label>
-                      <input value={(editForm as Record<string, string>)[key] || ""} onChange={(e) => setEditForm((p) => ({ ...p, [key]: e.target.value }))}
+                      <input value={(editForm as Record<string, string>)[key] || ""}
+                        onChange={(e) => setEditForm((p) => ({ ...p, [key]: e.target.value }))}
                         style={inputStyle} className={inputCls} />
                     </div>
                   ))}
                   <div>
                     <label style={labelStyle} className="block text-xs font-medium mb-1.5">Installation Date</label>
-                    <input type="date" value={editForm.installation_date || ""} onChange={(e) => setEditForm((p) => ({ ...p, installation_date: e.target.value }))}
-                      style={inputStyle} className={inputCls} />
+                    <input type="date" value={editForm.installation_date || ""} onChange={(e) => setEditForm((p) => ({ ...p, installation_date: e.target.value }))} style={inputStyle} className={inputCls} />
                   </div>
                   <div>
                     <label style={labelStyle} className="block text-xs font-medium mb-1.5">Requalification Frequency</label>
-                    <select value={editForm.requalification_frequency || "Annual"} onChange={(e) => setEditForm((p) => ({ ...p, requalification_frequency: e.target.value }))}
-                      style={inputStyle} className={inputCls}>
+                    <select value={editForm.requalification_frequency || "Annual"} onChange={(e) => setEditForm((p) => ({ ...p, requalification_frequency: e.target.value }))} style={inputStyle} className={inputCls}>
                       <option value="Annual">Annual (Every 1 Year)</option>
                       <option value="Every 2 Years">Every 2 Years</option>
                       <option value="Every 5 Years">Every 5 Years</option>
@@ -294,8 +348,7 @@ export default function EquipmentDetail() {
                   </div>
                   <div>
                     <label style={labelStyle} className="block text-xs font-medium mb-1.5">Tolerance Window</label>
-                    <select value={editForm.requalification_tolerance || "1"} onChange={(e) => setEditForm((p) => ({ ...p, requalification_tolerance: e.target.value }))}
-                      style={inputStyle} className={inputCls}>
+                    <select value={editForm.requalification_tolerance || "1"} onChange={(e) => setEditForm((p) => ({ ...p, requalification_tolerance: e.target.value }))} style={inputStyle} className={inputCls}>
                       <option value="1">± 1 Month</option>
                       <option value="2">± 2 Months</option>
                       <option value="3">± 3 Months</option>
@@ -303,13 +356,11 @@ export default function EquipmentDetail() {
                   </div>
                   <div>
                     <label style={labelStyle} className="block text-xs font-medium mb-1.5">Next Due Date</label>
-                    <input type="date" value={editForm.next_due_date || ""} onChange={(e) => setEditForm((p) => ({ ...p, next_due_date: e.target.value }))}
-                      style={inputStyle} className={inputCls} />
+                    <input type="date" value={editForm.next_due_date || ""} onChange={(e) => setEditForm((p) => ({ ...p, next_due_date: e.target.value }))} style={inputStyle} className={inputCls} />
                   </div>
                   <div className="col-span-2 md:col-span-3">
                     <label style={labelStyle} className="block text-xs font-medium mb-1.5">Notes</label>
-                    <textarea value={editForm.notes || ""} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} rows={3}
-                      style={inputStyle} className={`${inputCls} resize-none`} />
+                    <textarea value={editForm.notes || ""} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} rows={3} style={inputStyle} className={`${inputCls} resize-none`} />
                   </div>
                 </>
               ) : (
