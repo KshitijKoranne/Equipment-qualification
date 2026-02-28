@@ -151,6 +151,52 @@ export async function initDB() {
     try { await db.execute(sql); } catch { /* column already exists — safe to ignore */ }
   }
 
+  // Make equipment_id nullable — SQLite can't ALTER COLUMN so we rebuild via rename-copy-drop
+  // Safe to run repeatedly: IF NOT EXISTS on new table, check column info first
+  try {
+    const cols = await db.execute(`PRAGMA table_info(equipment)`);
+    const eidCol = cols.rows.find(r => r.name === 'equipment_id');
+    // notnull = 1 means the old NOT NULL constraint is still present
+    if (eidCol && eidCol.notnull === 1) {
+      await db.execute(`PRAGMA foreign_keys = OFF`);
+      await db.execute(`ALTER TABLE equipment RENAME TO equipment_old`);
+      await db.execute(`CREATE TABLE equipment (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        equipment_id TEXT UNIQUE,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        department TEXT NOT NULL,
+        location TEXT NOT NULL,
+        manufacturer TEXT,
+        model TEXT,
+        serial_number TEXT,
+        installation_date TEXT,
+        status TEXT NOT NULL DEFAULT 'Not Started',
+        requalification_frequency TEXT DEFAULT 'Annual',
+        requalification_tolerance TEXT DEFAULT '1',
+        next_due_date TEXT,
+        notes TEXT,
+        change_control_number TEXT,
+        urs_number TEXT,
+        urs_approval_date TEXT,
+        capacity TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`);
+      await db.execute(`INSERT INTO equipment SELECT
+        id, equipment_id, name, type, department, location, manufacturer, model,
+        serial_number, installation_date, status, requalification_frequency,
+        requalification_tolerance, next_due_date, notes, change_control_number,
+        urs_number, urs_approval_date, capacity, created_at, updated_at
+        FROM equipment_old`);
+      await db.execute(`DROP TABLE equipment_old`);
+      await db.execute(`PRAGMA foreign_keys = ON`);
+      console.log('[initDB] Migrated equipment_id to nullable');
+    }
+  } catch (err) {
+    console.error('[initDB] equipment_id nullable migration failed:', err);
+  }
+
   // Backfill missing phases for existing equipment
   // Done per-equipment so a single failure doesn't abort everything
   try {
