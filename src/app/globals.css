@@ -1,18 +1,109 @@
 @import "tailwindcss";
 
+/* ─── Light theme (default) ─────────────────────────────────────────── */
 :root {
-  --font-inter: "Inter", sans-serif;
+  --bg-base:        #f8fafc;   /* page background */
+  --bg-surface:     #ffffff;   /* cards, header, modals */
+  --bg-surface-2:   #f1f5f9;   /* table header bg, footer, inset areas */
+  --bg-hover:       #f8fafc;   /* table row hover */
+  --bg-input:       #ffffff;
+  --bg-tag:         #f1f5f9;   /* equipment ID tag */
+
+  --border:         #e2e8f0;
+  --border-light:   #f1f5f9;
+
+  --text-primary:   #0f172a;   /* headings, names — 16:1 on white */
+  --text-secondary: #334155;   /* body text — 9.7:1 on white */
+  --text-muted:     #64748b;   /* labels, metadata — 4.6:1 on white (AA) */
+  --text-subtle:    #94a3b8;   /* placeholder — decorative only */
+  --text-tag:       #475569;   /* monospace tag text — 5.9:1 on #f1f5f9 */
+
+  --spinner-track:  #cbd5e1;
+  --spinner-head:   #0f172a;
+
+  --focus-ring:     #0f172a;
+
+  /* Status badge colours — all AA compliant on their bg */
+  --badge-qual-bg:  #d1fae5; --badge-qual-text: #065f46; --badge-qual-border: #6ee7b7;
+  --badge-prog-bg:  #dbeafe; --badge-prog-text: #1e40af; --badge-prog-border: #93c5fd;
+  --badge-none-bg:  #f1f5f9; --badge-none-text: #334155; --badge-none-border: #cbd5e1;
+  --badge-over-bg:  #fee2e2; --badge-over-text: #991b1b; --badge-over-border: #fca5a5;
+  --badge-fail-bg:  #ffedd5; --badge-fail-text: #9a3412; --badge-fail-border: #fdba74;
+  --badge-warn-bg:  #fef3c7; --badge-warn-text: #92400e; --badge-warn-border: #fcd34d;
+
+  /* Qual phase badges */
+  --qbadge-pass-bg: #d1fae5; --qbadge-pass-text: #065f46; --qbadge-pass-border: #6ee7b7;
+  --qbadge-fail-bg: #fee2e2; --qbadge-fail-text: #991b1b; --qbadge-fail-border: #fca5a5;
+  --qbadge-prog-bg: #dbeafe; --qbadge-prog-text: #1e40af; --qbadge-prog-border: #93c5fd;
+  --qbadge-pend-bg: #f1f5f9; --qbadge-pend-text: #334155; --qbadge-pend-border: #cbd5e1;
+  --qbadge-waiv-bg: #f3e8ff; --qbadge-waiv-text: #6b21a8; --qbadge-waiv-border: #d8b4fe;
+
+  /* Scrollbar */
+  --scroll-track:   #f1f5f9;
+  --scroll-thumb:   #cbd5e1;
+  --scroll-hover:   #94a3b8;
 }
 
-* {
-  box-sizing: border-box;
+/* ─── Dark theme ─────────────────────────────────────────────────────── */
+.dark {
+  --bg-base:        #0d1117;
+  --bg-surface:     #161b22;
+  --bg-surface-2:   #1c2128;
+  --bg-hover:       #1c2128;
+  --bg-input:       #1c2128;
+  --bg-tag:         #1c2128;
+
+  --border:         #30363d;
+  --border-light:   #21262d;
+
+  --text-primary:   #f0f6fc;   /* 15.8:1 on #161b22 */
+  --text-secondary: #cdd9e5;   /* 10.2:1 on #161b22 */
+  --text-muted:     #8b949e;   /* 4.5:1 on #161b22 — AA */
+  --text-subtle:    #6e7681;   /* decorative only */
+  --text-tag:       #adbac7;   /* 6.1:1 on #1c2128 */
+
+  --spinner-track:  #30363d;
+  --spinner-head:   #f0f6fc;
+
+  --focus-ring:     #58a6ff;
+
+  /* Status badges — all tested AA on dark backgrounds */
+  --badge-qual-bg:  #0d2e1f; --badge-qual-text: #3fb950; --badge-qual-border: #238636;
+  --badge-prog-bg:  #0c2035; --badge-prog-text: #58a6ff; --badge-prog-border: #1f6feb;
+  --badge-none-bg:  #1c2128; --badge-none-text: #cdd9e5; --badge-none-border: #30363d;
+  --badge-over-bg:  #2d0c0c; --badge-over-text: #f85149; --badge-over-border: #6e1c1c;
+  --badge-fail-bg:  #2d1800; --badge-fail-text: #fb8f44; --badge-fail-border: #5c3000;
+  --badge-warn-bg:  #2d2000; --badge-warn-text: #e3b341; --badge-warn-border: #5c4000;
+
+  --qbadge-pass-bg: #0d2e1f; --qbadge-pass-text: #3fb950; --qbadge-pass-border: #238636;
+  --qbadge-fail-bg: #2d0c0c; --qbadge-fail-text: #f85149; --qbadge-fail-border: #6e1c1c;
+  --qbadge-prog-bg: #0c2035; --qbadge-prog-text: #58a6ff; --qbadge-prog-border: #1f6feb;
+  --qbadge-pend-bg: #1c2128; --qbadge-pend-text: #cdd9e5; --qbadge-pend-border: #30363d;
+  --qbadge-waiv-bg: #1e0e35; --qbadge-waiv-text: #c084fc; --qbadge-waiv-border: #6b21a8;
+
+  --scroll-track:   #1c2128;
+  --scroll-thumb:   #30363d;
+  --scroll-hover:   #484f58;
 }
+
+/* ─── Base styles ────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
 
 body {
-  font-family: var(--font-inter), system-ui, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
+
+/* Focus visible ring */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

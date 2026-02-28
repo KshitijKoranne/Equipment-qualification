@@ -6,16 +6,16 @@ export const metadata: Metadata = {
   description: "Pharmaceutical equipment qualification tracking system",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased bg-slate-50 text-slate-900">
-        {children}
-      </body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Prevent flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{
+          __html: `(function(){try{var t=localStorage.getItem('eq-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();`
+        }} />
+      </head>
+      <body>{children}</body>
     </html>
   );
 }
