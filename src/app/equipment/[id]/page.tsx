@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Edit2, Save, X, CheckCircle2, Clock, AlertTriangle, XCircle, Activity, Trash2, FlaskConical, Wrench, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Edit2, Save, X, CheckCircle2, CheckCircle, Clock, AlertTriangle, XCircle, Activity, Trash2, FlaskConical, Wrench, Plus, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import AttachmentPanel from "@/components/AttachmentPanel";
 
@@ -116,14 +116,22 @@ export default function EquipmentDetail() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const [newlyAssignedId, setNewlyAssignedId] = useState<string | null>(null);
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch(`/api/equipment/${id}`, {
+      const res = await fetch(`/api/equipment/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...editForm, qualifications: editQuals }),
       });
+      const data = await res.json();
+      // Show banner if Equipment ID was auto-assigned on DQ completion
+      if (data.equipment_id && (!equipment?.equipment_id || equipment.equipment_id.startsWith("PENDING-"))) {
+        setNewlyAssignedId(data.equipment_id);
+        setTimeout(() => setNewlyAssignedId(null), 8000);
+      }
       setEditing(false);
       fetchData();
     } catch (e) { console.error(e); }
@@ -234,6 +242,19 @@ export default function EquipmentDetail() {
           ))}
         </div>
 
+        {/* Equipment ID assigned banner */}
+        {newlyAssignedId && (
+          <div style={{ background: "var(--badge-pass-bg)", border: "1px solid var(--badge-pass-border)", color: "var(--badge-pass-text)" }}
+            className="rounded-xl px-5 py-3.5 mb-4 flex items-center gap-3">
+            <CheckCircle size={16} className="flex-shrink-0" />
+            <div>
+              <span className="text-sm font-semibold">Equipment ID assigned: </span>
+              <span className="text-sm font-mono font-bold">{newlyAssignedId}</span>
+              <span className="text-xs ml-2 opacity-75">— auto-generated on DQ completion</span>
+            </div>
+          </div>
+        )}
+
         {/* Qualification Phases */}
         {activeTab === "qualification" && (
           <>
@@ -342,6 +363,16 @@ export default function EquipmentDetail() {
                     {/* Attachments — always visible */}
                     <AttachmentPanel qualificationId={qual.id} />
 
+                    {/* DQ: Equipment ID assignment hint */}
+                    {qual.phase === "DQ" && (!equipment.equipment_id || equipment.equipment_id.startsWith("PENDING-")) && (
+                      <div style={{ borderTop: "1px solid var(--border-light)", background: "var(--bg-surface-2)" }} className="px-5 py-3 flex items-center gap-2">
+                        <Tag size={13} style={{ color: "var(--text-muted)" }} className="flex-shrink-0" />
+                        <p style={{ color: "var(--text-muted)" }} className="text-xs">
+                          Equipment ID will be auto-generated when DQ status is set to <strong>Passed</strong> and saved.
+                        </p>
+                      </div>
+                    )}
+
                     {/* OQ: requalification frequency field */}
                     {qual.phase === "OQ" && (
                       <div style={{ borderTop: "1px solid var(--border-light)" }} className="px-5 py-4">
@@ -448,7 +479,13 @@ export default function EquipmentDetail() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-                  <Detail label="Equipment ID (Tag No.)" value={equipment.equipment_id?.startsWith('PENDING-') ? 'ID Pending' : equipment.equipment_id} mono />
+                  <Detail label="Equipment ID (Tag No.)" value={equipment.equipment_id?.startsWith('PENDING-') ? null : equipment.equipment_id} mono />
+                  {(!equipment.equipment_id || equipment.equipment_id.startsWith('PENDING-')) && (
+                    <div>
+                      <p style={labelStyle} className="text-xs font-medium mb-1">Equipment ID (Tag No.)</p>
+                      <p style={{ color: "var(--text-muted)" }} className="text-xs italic">Auto-assigned when DQ is approved</p>
+                    </div>
+                  )}
                   <Detail label="Equipment Name"         value={equipment.name} />
                   <Detail label="Type"                   value={equipment.type} />
                   <Detail label="Department"             value={equipment.department} />

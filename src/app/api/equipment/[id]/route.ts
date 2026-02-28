@@ -26,6 +26,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
+// Generate next Equipment ID: EQ-YYYY-NNNN
+async function generateEquipmentId(): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `EQ-${year}-`;
+  // Find highest existing sequence for this year
+  const result = await db.execute({
+    sql: `SELECT equipment_id FROM equipment WHERE equipment_id LIKE ? ORDER BY equipment_id DESC LIMIT 1`,
+    args: [`${prefix}%`],
+  });
+  let seq = 1;
+  if (result.rows.length) {
+    const last = result.rows[0].equipment_id as string;
+    const num = parseInt(last.replace(prefix, ""), 10);
+    if (!isNaN(num)) seq = num + 1;
+  }
+  return `${prefix}${String(seq).padStart(4, "0")}`;
+}
+
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -34,6 +52,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       requalification_frequency, requalification_tolerance, next_due_date, notes, status, qualifications,
       equipment_id, change_control_number, urs_number, urs_approval_date, capacity } = body;
 
+    // Check if DQ is being marked Passed and equipment_id is still a placeholder
+    let resolvedEquipmentId = equipment_id || null;
+    const currentEquip = await db.execute({ sql: `SELECT equipment_id FROM equipment WHERE id = ?`, args: [id] });
+    const currentEqId = currentEquip.rows[0]?.equipment_id as string | null;
+    const isPlaceholder = !currentEqId || currentEqId.startsWith("PENDING-");
+
+    if (isPlaceholder && Array.isArray(qualifications)) {
+      const dqPhase = qualifications.find((q: { phase: string; status: string }) => q.phase === "DQ" && q.status === "Passed");
+      if (dqPhase) {
+        resolvedEquipmentId = await generateEquipmentId();
+      }
+    }
+
     await db.execute({
       sql: `UPDATE equipment SET name=?, type=?, department=?, location=?, manufacturer=?, model=?,
             serial_number=?, installation_date=?, requalification_frequency=?, requalification_tolerance=?,
@@ -41,7 +72,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             urs_approval_date=?, capacity=?, updated_at=datetime('now') WHERE id=?`,
       args: [name, type, department, location, manufacturer || null, model || null, serial_number || null,
         installation_date || null, requalification_frequency || "Annual", requalification_tolerance || "1",
-        next_due_date || null, notes || null, status, equipment_id || null,
+        next_due_date || null, notes || null, status, resolvedEquipmentId,
         change_control_number || null, urs_number || null, urs_approval_date || null, capacity || null, id],
     });
 
@@ -56,7 +87,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    // Recalculate status from phases
+    // Recalculate overall status from phases
     const phases = await db.execute({ sql: `SELECT status FROM qualifications WHERE equipment_id = ?`, args: [id] });
     const statuses = phases.rows.map(p => p.status as string);
     let computed = status;
@@ -66,12 +97,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     else if (statuses.some(s => s === "Passed")) computed = "In Progress";
 
     await db.execute({ sql: `UPDATE equipment SET status=? WHERE id=?`, args: [computed, id] });
+
+    const auditDetail = resolvedEquipmentId && resolvedEquipmentId !== currentEqId
+      ? `Equipment ID ${resolvedEquipmentId} assigned on DQ completion`
+      : "Details and phases updated";
+
     await db.execute({
-      sql: `INSERT INTO audit_log (equipment_id, action, details) VALUES (?, 'Equipment Updated', 'Details and phases updated')`,
-      args: [id],
+      sql: `INSERT INTO audit_log (equipment_id, action, details) VALUES (?, 'Equipment Updated', ?)`,
+      args: [id, auditDetail],
     });
 
-    return NextResponse.json({ message: "Updated" });
+    return NextResponse.json({ message: "Updated", equipment_id: resolvedEquipmentId });
   } catch (err) {
     console.error("[PUT /api/equipment/[id]]", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -81,7 +117,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    // Delete dependents first
     const bds = await db.execute({ sql: `SELECT id FROM breakdowns WHERE equipment_id = ?`, args: [id] });
     for (const bd of bds.rows) {
       await db.execute({ sql: `DELETE FROM revalidation_phases WHERE breakdown_id = ?`, args: [bd.id as number] });
