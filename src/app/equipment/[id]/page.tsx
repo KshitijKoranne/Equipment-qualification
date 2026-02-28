@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Edit2, Save, X, CheckCircle2, Clock, AlertTriangle, XCircle, Activity, Trash2, FlaskConical } from "lucide-react";
+import { ArrowLeft, Edit2, Save, X, CheckCircle2, Clock, AlertTriangle, XCircle, Activity, Trash2, FlaskConical, Wrench, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import AttachmentPanel from "@/components/AttachmentPanel";
 
@@ -17,6 +17,16 @@ type Qualification = {
   approval_date: string; approved_by: string; status: string; remarks: string;
 };
 type AuditEntry = { id: number; action: string; details: string; changed_by: string; created_at: string; };
+
+type RevalidationPhase = { id: number; breakdown_id: number; phase: string; protocol_number: string; execution_date: string; approval_date: string; approved_by: string; status: string; remarks: string; };
+type Breakdown = {
+  id: number; equipment_id: number; breakdown_ref: string; reported_date: string; reported_by: string;
+  description: string; root_cause: string; breakdown_type: string; severity: string;
+  maintenance_start: string; maintenance_end: string; maintenance_performed_by: string; maintenance_details: string;
+  validation_impact: string; impact_assessment: string; status: string;
+  closure_date: string; closed_by: string; closure_remarks: string;
+  revalidation_phases: RevalidationPhase[];
+};
 
 const PHASE_INFO: Record<string, { full: string; desc: string }> = {
   URS:              { full: "User Requirement Specification", desc: "Documents what the user requires the equipment to do — the foundation of all qualification activities" },
@@ -46,7 +56,9 @@ const EQUIP_STATUS: Record<string, { bg: string; text: string; icon: React.Compo
   "Not Started":          { bg: "--badge-none-bg", text: "--badge-none-text", icon: Clock },
   Overdue:                { bg: "--badge-over-bg", text: "--badge-over-text", icon: XCircle },
   Failed:                 { bg: "--badge-fail-bg", text: "--badge-fail-text", icon: AlertTriangle },
-  "Requalification Due":  { bg: "--badge-warn-bg", text: "--badge-warn-text", icon: AlertTriangle },
+  "Requalification Due":   { bg: "--badge-warn-bg",  text: "--badge-warn-text",  icon: AlertTriangle },
+  "Under Maintenance":     { bg: "--badge-maint-bg", text: "--badge-maint-text", icon: Activity },
+  "Revalidation Required": { bg: "--badge-reval-bg", text: "--badge-reval-text", icon: AlertTriangle },
 };
 
 export default function EquipmentDetail() {
@@ -62,8 +74,13 @@ export default function EquipmentDetail() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Equipment>>({});
   const [editQuals, setEditQuals] = useState<Qualification[]>([]);
-  const [activeTab, setActiveTab] = useState<"qualification" | "details" | "audit">("qualification");
+  const [activeTab, setActiveTab] = useState<"qualification" | "details" | "breakdowns" | "audit">("qualification");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [breakdowns, setBreakdowns] = useState<Breakdown[]>([]);
+  const [showBreakdownForm, setShowBreakdownForm] = useState(false);
+  const [expandedBreakdown, setExpandedBreakdown] = useState<number | null>(null);
+  const [editingBreakdown, setEditingBreakdown] = useState<number | null>(null);
+  const [breakdownEdit, setBreakdownEdit] = useState<Partial<Breakdown>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -79,6 +96,9 @@ export default function EquipmentDetail() {
       setAuditLog(data.auditLog);
       setEditForm(data.equipment);
       setEditQuals(sorted);
+      // Fetch breakdowns
+      const bdRes = await fetch(`/api/breakdowns/${id}`);
+      setBreakdowns(await bdRes.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [id]);
@@ -190,13 +210,13 @@ export default function EquipmentDetail() {
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Tabs */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }} className="flex gap-1 rounded-xl p-1 mb-6 w-fit">
-          {(["qualification", "details", "audit"] as const).map((tab) => (
+          {(["qualification", "details", "breakdowns", "audit"] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               style={activeTab === tab
                 ? { background: "var(--text-primary)", color: "var(--bg-surface)" }
                 : { color: "var(--text-muted)", background: "transparent" }}
               className="px-4 py-2 text-sm font-medium rounded-lg transition-all">
-              {tab === "qualification" ? "Qualification Phases" : tab === "details" ? "Equipment Details" : "Audit Log"}
+              {tab === "qualification" ? "Qualification Phases" : tab === "details" ? "Equipment Details" : tab === "breakdowns" ? "Breakdowns" : "Audit Log"}
             </button>
           ))}
         </div>
@@ -389,6 +409,27 @@ export default function EquipmentDetail() {
           </div>
         )}
 
+        {/* Breakdowns Tab */}
+        {activeTab === "breakdowns" && (
+          <BreakdownsTab
+            equipmentId={Number(id)}
+            breakdowns={breakdowns}
+            showForm={showBreakdownForm}
+            setShowForm={setShowBreakdownForm}
+            expandedBreakdown={expandedBreakdown}
+            setExpandedBreakdown={setExpandedBreakdown}
+            editingBreakdown={editingBreakdown}
+            setEditingBreakdown={setEditingBreakdown}
+            breakdownEdit={breakdownEdit}
+            setBreakdownEdit={setBreakdownEdit}
+            onRefresh={fetchData}
+            surfaceStyle={surfaceStyle}
+            inputStyle={inputStyle}
+            inputCls={inputCls}
+            labelStyle={labelStyle}
+          />
+        )}
+
         {/* Audit Log */}
         {activeTab === "audit" && (
           <div style={surfaceStyle} className="rounded-xl overflow-hidden">
@@ -452,6 +493,514 @@ function Detail({ label, value, mono = false }: { label: string; value: string |
       <p style={{ color: mono ? "var(--text-tag)" : "var(--text-primary)" }} className={`text-sm font-medium ${mono ? "font-mono" : ""}`}>
         {value || <span style={{ color: "var(--text-subtle)" }}>—</span>}
       </p>
+    </div>
+  );
+}
+
+// ─── Breakdown Types & Constants ────────────────────────────────────────────
+const BREAKDOWN_TYPES = ["Mechanical", "Electrical", "Software/Firmware", "Pneumatic/Hydraulic", "Calibration Failure", "Contamination", "Wear & Tear", "Other"];
+const SEVERITY_LEVELS = ["Minor", "Moderate", "Major", "Critical"];
+const VALIDATION_IMPACTS = ["No Impact", "Partial Revalidation Required", "Full Revalidation Required"];
+const REVALIDATION_PHASE_OPTIONS = ["IQ", "OQ", "PQ"];
+const BD_STATUS_OPTIONS = ["Open", "Under Investigation", "Maintenance In Progress", "Revalidation In Progress", "Closed", "Cancelled"];
+const REVAL_STATUS_OPTIONS = ["Pending", "In Progress", "Passed", "Failed"];
+
+const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Minor:    { bg: "--badge-none-bg", text: "--badge-none-text", border: "--badge-none-border" },
+  Moderate: { bg: "--badge-warn-bg", text: "--badge-warn-text", border: "--badge-warn-border" },
+  Major:    { bg: "--badge-fail-bg", text: "--badge-fail-text", border: "--badge-fail-border" },
+  Critical: { bg: "--badge-over-bg", text: "--badge-over-text", border: "--badge-over-border" },
+};
+
+const BD_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Open:                       { bg: "--badge-over-bg",  text: "--badge-over-text",  border: "--badge-over-border" },
+  "Under Investigation":      { bg: "--badge-warn-bg",  text: "--badge-warn-text",  border: "--badge-warn-border" },
+  "Maintenance In Progress":  { bg: "--badge-maint-bg", text: "--badge-maint-text", border: "--badge-maint-border" },
+  "Revalidation In Progress": { bg: "--badge-reval-bg", text: "--badge-reval-text", border: "--badge-reval-border" },
+  Closed:                     { bg: "--badge-qual-bg",  text: "--badge-qual-text",  border: "--badge-qual-border" },
+  Cancelled:                  { bg: "--badge-pend-bg",  text: "--badge-pend-text",  border: "--badge-pend-border" },
+};
+
+// ─── New Breakdown Form ──────────────────────────────────────────────────────
+function NewBreakdownForm({ equipmentId, onSave, onCancel, surfaceStyle, inputStyle, inputCls, labelStyle }:
+  { equipmentId: number; onSave: () => void; onCancel: () => void; surfaceStyle: React.CSSProperties; inputStyle: React.CSSProperties; inputCls: string; labelStyle: React.CSSProperties }) {
+
+  const today = new Date().toISOString().split("T")[0];
+  const [form, setForm] = useState({
+    breakdown_ref: `BD-${Date.now().toString().slice(-6)}`,
+    reported_date: today,
+    reported_by: "",
+    description: "",
+    breakdown_type: "Mechanical",
+    severity: "Minor",
+    validation_impact: "No Impact",
+    impact_assessment: "",
+    revalidation_phases: [] as string[],
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+  const togglePhase = (phase: string) => setForm((p) => ({
+    ...p,
+    revalidation_phases: p.revalidation_phases.includes(phase)
+      ? p.revalidation_phases.filter((x) => x !== phase)
+      : [...p.revalidation_phases, phase],
+  }));
+
+  const submit = async () => {
+    if (!form.description) { setError("Description is required."); return; }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/breakdowns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, equipment_id: equipmentId }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed"); }
+      onSave();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={surfaceStyle} className="rounded-xl overflow-hidden mb-6">
+      <div style={{ borderBottom: "1px solid var(--border-light)", background: "var(--bg-surface-2)" }} className="px-5 py-3 flex items-center justify-between">
+        <span style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">Report New Breakdown</span>
+      </div>
+      <div className="px-5 py-5 space-y-4">
+        {/* Identification */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label style={labelStyle} className="block text-xs font-medium mb-1.5">Reference No.</label>
+            <input value={form.breakdown_ref} onChange={(e) => set("breakdown_ref", e.target.value)} style={inputStyle} className={inputCls} placeholder="BD-001" />
+          </div>
+          <div>
+            <label style={labelStyle} className="block text-xs font-medium mb-1.5">Reported Date *</label>
+            <input type="date" value={form.reported_date} onChange={(e) => set("reported_date", e.target.value)} style={inputStyle} className={inputCls} />
+          </div>
+          <div>
+            <label style={labelStyle} className="block text-xs font-medium mb-1.5">Reported By</label>
+            <input value={form.reported_by} onChange={(e) => set("reported_by", e.target.value)} style={inputStyle} className={inputCls} placeholder="Name" />
+          </div>
+        </div>
+        <div>
+          <label style={labelStyle} className="block text-xs font-medium mb-1.5">Breakdown Description *</label>
+          <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3}
+            style={inputStyle} className={`${inputCls} resize-none`} placeholder="Describe what happened, symptoms observed..." />
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label style={labelStyle} className="block text-xs font-medium mb-1.5">Breakdown Type</label>
+            <select value={form.breakdown_type} onChange={(e) => set("breakdown_type", e.target.value)} style={inputStyle} className={inputCls}>
+              {BREAKDOWN_TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle} className="block text-xs font-medium mb-1.5">Severity</label>
+            <select value={form.severity} onChange={(e) => set("severity", e.target.value)} style={inputStyle} className={inputCls}>
+              {SEVERITY_LEVELS.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle} className="block text-xs font-medium mb-1.5">Validation Impact</label>
+            <select value={form.validation_impact} onChange={(e) => set("validation_impact", e.target.value)} style={inputStyle} className={inputCls}>
+              {VALIDATION_IMPACTS.map((v) => <option key={v}>{v}</option>)}
+            </select>
+          </div>
+        </div>
+        {form.validation_impact !== "No Impact" && (
+          <>
+            <div>
+              <label style={labelStyle} className="block text-xs font-medium mb-1.5">Impact Assessment</label>
+              <textarea value={form.impact_assessment} onChange={(e) => set("impact_assessment", e.target.value)} rows={2}
+                style={inputStyle} className={`${inputCls} resize-none`} placeholder="Describe which validated parameters may be affected..." />
+            </div>
+            <div>
+              <label style={labelStyle} className="block text-xs font-medium mb-2">Revalidation Phases Required</label>
+              <div className="flex gap-3">
+                {REVALIDATION_PHASE_OPTIONS.map((phase) => (
+                  <button key={phase} type="button" onClick={() => togglePhase(phase)}
+                    style={{
+                      background: form.revalidation_phases.includes(phase) ? "var(--text-primary)" : "var(--bg-surface-2)",
+                      color: form.revalidation_phases.includes(phase) ? "var(--bg-surface)" : "var(--text-muted)",
+                      border: "1px solid var(--border)",
+                    }}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                    {phase}
+                  </button>
+                ))}
+              </div>
+              <p style={{ color: "var(--text-muted)" }} className="text-xs mt-1.5">Select which qualification phases need to be repeated</p>
+            </div>
+          </>
+        )}
+        {error && <p style={{ color: "var(--badge-over-text)" }} className="text-xs">{error}</p>}
+        <div className="flex justify-end gap-3 pt-1">
+          <button onClick={onCancel} style={{ color: "var(--text-secondary)" }} className="px-4 py-2 text-sm hover:opacity-80 transition-opacity">Cancel</button>
+          <button onClick={submit} disabled={saving}
+            style={{ background: "var(--badge-over-text)", color: "#fff" }}
+            className="px-5 py-2 text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50">
+            {saving ? "Saving..." : "Report Breakdown"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Breakdown Card ───────────────────────────────────────────────────────────
+function BreakdownCard({ bd, equipmentId, expanded, onToggle, editing, onStartEdit, onCancelEdit, onSaved, surfaceStyle, inputStyle, inputCls, labelStyle }:
+  {
+    bd: Breakdown; equipmentId: number; expanded: boolean; onToggle: () => void;
+    editing: boolean; onStartEdit: () => void; onCancelEdit: () => void; onSaved: () => void;
+    surfaceStyle: React.CSSProperties; inputStyle: React.CSSProperties; inputCls: string; labelStyle: React.CSSProperties;
+  }) {
+
+  const [form, setForm] = useState<Partial<Breakdown>>(bd);
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+  const setRPField = (rpId: number, field: string, value: string) => {
+    setForm((p) => ({
+      ...p,
+      revalidation_phases: (p.revalidation_phases || []).map((rp) => rp.id === rpId ? { ...rp, [field]: value } : rp),
+    }));
+  };
+
+  useEffect(() => { setForm(bd); }, [bd]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await fetch(`/api/breakdowns/${bd.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, equipment_id: equipmentId }),
+      });
+      onSaved();
+      onCancelEdit();
+    } finally { setSaving(false); }
+  };
+
+  const sevCfg = SEVERITY_COLORS[bd.severity] || SEVERITY_COLORS.Minor;
+  const stCfg = BD_STATUS_COLORS[bd.status] || BD_STATUS_COLORS.Open;
+
+  return (
+    <div style={surfaceStyle} className="rounded-xl overflow-hidden">
+      {/* Card header — always visible */}
+      <div className="px-5 py-4 flex items-start gap-4 cursor-pointer" onClick={onToggle}>
+        <div style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border)" }} className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+          <Wrench size={16} style={{ color: "var(--text-muted)" }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">{bd.breakdown_ref}</span>
+            <span style={{ background: `var(${sevCfg.bg})`, color: `var(${sevCfg.text})`, borderColor: `var(${sevCfg.border})` }}
+              className="text-xs px-2 py-0.5 rounded-md border font-medium">{bd.severity}</span>
+            <span style={{ background: `var(${stCfg.bg})`, color: `var(${stCfg.text})`, borderColor: `var(${stCfg.border})` }}
+              className="text-xs px-2 py-0.5 rounded-md border font-medium">{bd.status}</span>
+            {bd.validation_impact !== "No Impact" && (
+              <span style={{ background: "var(--badge-reval-bg)", color: "var(--badge-reval-text)", borderColor: "var(--badge-reval-border)" }}
+                className="text-xs px-2 py-0.5 rounded-md border font-medium">{bd.validation_impact}</span>
+            )}
+          </div>
+          <p style={{ color: "var(--text-secondary)" }} className="text-xs mt-1 truncate">{bd.description}</p>
+          <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5">
+            Reported: {new Date(bd.reported_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+            {bd.reported_by ? ` by ${bd.reported_by}` : ""}
+            {bd.breakdown_type ? ` · ${bd.breakdown_type}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {!editing && (
+            <button onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+              className="px-2.5 py-1 rounded-md text-xs font-medium hover:opacity-80 transition-opacity">
+              Edit
+            </button>
+          )}
+          {expanded ? <ChevronUp size={15} style={{ color: "var(--text-muted)" }} /> : <ChevronDown size={15} style={{ color: "var(--text-muted)" }} />}
+        </div>
+      </div>
+
+      {/* Expanded body */}
+      {expanded && (
+        <div style={{ borderTop: "1px solid var(--border-light)" }}>
+          {editing ? (
+            <div className="px-5 py-5 space-y-4">
+              {/* Maintenance details */}
+              <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider">Maintenance Details</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">Maintenance Start</label>
+                  <input type="date" value={form.maintenance_start || ""} onChange={(e) => set("maintenance_start", e.target.value)} style={inputStyle} className={inputCls} />
+                </div>
+                <div>
+                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">Maintenance End</label>
+                  <input type="date" value={form.maintenance_end || ""} onChange={(e) => set("maintenance_end", e.target.value)} style={inputStyle} className={inputCls} />
+                </div>
+                <div>
+                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">Performed By</label>
+                  <input value={form.maintenance_performed_by || ""} onChange={(e) => set("maintenance_performed_by", e.target.value)} style={inputStyle} className={inputCls} placeholder="Engineer / Vendor" />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle} className="block text-xs font-medium mb-1.5">Root Cause</label>
+                <textarea value={form.root_cause || ""} onChange={(e) => set("root_cause", e.target.value)} rows={2}
+                  style={inputStyle} className={`${inputCls} resize-none`} placeholder="Root cause identified..." />
+              </div>
+              <div>
+                <label style={labelStyle} className="block text-xs font-medium mb-1.5">Maintenance Details / Actions Taken</label>
+                <textarea value={form.maintenance_details || ""} onChange={(e) => set("maintenance_details", e.target.value)} rows={3}
+                  style={inputStyle} className={`${inputCls} resize-none`} placeholder="Parts replaced, corrective actions performed..." />
+              </div>
+
+              {/* Revalidation phases */}
+              {(form.revalidation_phases || []).length > 0 && (
+                <>
+                  <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider pt-2">Revalidation Phases</p>
+                  <div className="space-y-4">
+                    {(form.revalidation_phases || []).map((rp) => (
+                      <div key={rp.id} style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border)" }} className="rounded-lg p-4">
+                        <p style={{ color: "var(--text-primary)" }} className="text-xs font-bold uppercase tracking-widest mb-3">{rp.phase}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label style={labelStyle} className="block text-xs font-medium mb-1">Status</label>
+                            <select value={rp.status} onChange={(e) => setRPField(rp.id, "status", e.target.value)} style={inputStyle} className={inputCls}>
+                              {REVAL_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={labelStyle} className="block text-xs font-medium mb-1">Protocol No.</label>
+                            <input value={rp.protocol_number || ""} onChange={(e) => setRPField(rp.id, "protocol_number", e.target.value)} style={inputStyle} className={inputCls} placeholder="e.g. RV-OQ-001" />
+                          </div>
+                          <div>
+                            <label style={labelStyle} className="block text-xs font-medium mb-1">Execution Date</label>
+                            <input type="date" value={rp.execution_date || ""} onChange={(e) => setRPField(rp.id, "execution_date", e.target.value)} style={inputStyle} className={inputCls} />
+                          </div>
+                          <div>
+                            <label style={labelStyle} className="block text-xs font-medium mb-1">Approved By</label>
+                            <input value={rp.approved_by || ""} onChange={(e) => setRPField(rp.id, "approved_by", e.target.value)} style={inputStyle} className={inputCls} placeholder="Name" />
+                          </div>
+                          <div className="col-span-2">
+                            <label style={labelStyle} className="block text-xs font-medium mb-1">Remarks</label>
+                            <textarea value={rp.remarks || ""} onChange={(e) => setRPField(rp.id, "remarks", e.target.value)} rows={2}
+                              style={inputStyle} className={`${inputCls} resize-none`} placeholder="Observations..." />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Status & Closure */}
+              <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider pt-2">Status & Closure</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">Breakdown Status</label>
+                  <select value={form.status || "Open"} onChange={(e) => set("status", e.target.value)} style={inputStyle} className={inputCls}>
+                    {BD_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                {(form.status === "Closed" || form.status === "Cancelled") && (
+                  <>
+                    <div>
+                      <label style={labelStyle} className="block text-xs font-medium mb-1.5">Closure Date</label>
+                      <input type="date" value={form.closure_date || ""} onChange={(e) => set("closure_date", e.target.value)} style={inputStyle} className={inputCls} />
+                    </div>
+                    <div>
+                      <label style={labelStyle} className="block text-xs font-medium mb-1.5">Closed By</label>
+                      <input value={form.closed_by || ""} onChange={(e) => set("closed_by", e.target.value)} style={inputStyle} className={inputCls} placeholder="Name" />
+                    </div>
+                  </>
+                )}
+              </div>
+              {(form.status === "Closed" || form.status === "Cancelled") && (
+                <div>
+                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">Closure Remarks</label>
+                  <textarea value={form.closure_remarks || ""} onChange={(e) => set("closure_remarks", e.target.value)} rows={2}
+                    style={inputStyle} className={`${inputCls} resize-none`} placeholder="Closure summary, corrective/preventive actions..." />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <button onClick={onCancelEdit} style={{ color: "var(--text-secondary)" }} className="px-4 py-2 text-sm hover:opacity-80 transition-opacity">Cancel</button>
+                <button onClick={save} disabled={saving}
+                  style={{ background: "var(--text-primary)", color: "var(--bg-surface)" }}
+                  className="px-5 py-2 text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50">
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            // View mode
+            <div className="px-5 py-5 space-y-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
+                <Detail label="Breakdown Type" value={bd.breakdown_type} />
+                <Detail label="Root Cause" value={bd.root_cause} />
+                <Detail label="Validation Impact" value={bd.validation_impact} />
+                <Detail label="Maintenance Start" value={bd.maintenance_start ? new Date(bd.maintenance_start).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                <Detail label="Maintenance End" value={bd.maintenance_end ? new Date(bd.maintenance_end).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                <Detail label="Performed By" value={bd.maintenance_performed_by} />
+              </div>
+              {bd.maintenance_details && (
+                <div>
+                  <p style={{ color: "var(--text-muted)" }} className="text-xs font-medium mb-1">Maintenance Details</p>
+                  <p style={{ color: "var(--text-secondary)" }} className="text-sm leading-relaxed">{bd.maintenance_details}</p>
+                </div>
+              )}
+              {bd.impact_assessment && (
+                <div>
+                  <p style={{ color: "var(--text-muted)" }} className="text-xs font-medium mb-1">Impact Assessment</p>
+                  <p style={{ color: "var(--text-secondary)" }} className="text-sm leading-relaxed">{bd.impact_assessment}</p>
+                </div>
+              )}
+              {bd.revalidation_phases.length > 0 && (
+                <div>
+                  <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">Revalidation Phases</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {bd.revalidation_phases.map((rp) => {
+                      const qb = { bg: "--qbadge-pend-bg", text: "--qbadge-pend-text", border: "--qbadge-pend-border" };
+                      if (rp.status === "Passed") { qb.bg = "--qbadge-pass-bg"; qb.text = "--qbadge-pass-text"; qb.border = "--qbadge-pass-border"; }
+                      else if (rp.status === "Failed") { qb.bg = "--qbadge-fail-bg"; qb.text = "--qbadge-fail-text"; qb.border = "--qbadge-fail-border"; }
+                      else if (rp.status === "In Progress") { qb.bg = "--qbadge-prog-bg"; qb.text = "--qbadge-prog-text"; qb.border = "--qbadge-prog-border"; }
+                      return (
+                        <div key={rp.id} style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border)" }} className="rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span style={{ color: "var(--text-primary)" }} className="text-xs font-bold uppercase tracking-widest">{rp.phase}</span>
+                            <span style={{ background: `var(${qb.bg})`, color: `var(${qb.text})`, borderColor: `var(${qb.border})` }}
+                              className="text-xs px-1.5 py-0.5 rounded border font-medium">{rp.status}</span>
+                          </div>
+                          <Detail label="Protocol No." value={rp.protocol_number} />
+                          <div className="mt-2">
+                            <Detail label="Approved By" value={rp.approved_by} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {bd.status === "Closed" && (
+                <div style={{ background: "var(--badge-qual-bg)", border: "1px solid var(--badge-qual-border)" }} className="rounded-lg p-4">
+                  <div className="grid grid-cols-3 gap-4 mb-3">
+                    <Detail label="Closure Date" value={bd.closure_date ? new Date(bd.closure_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                    <Detail label="Closed By" value={bd.closed_by} />
+                  </div>
+                  {bd.closure_remarks && (
+                    <div>
+                      <p style={{ color: "var(--text-muted)" }} className="text-xs font-medium mb-1">Closure Remarks</p>
+                      <p style={{ color: "var(--text-secondary)" }} className="text-sm">{bd.closure_remarks}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Breakdowns Tab Container ────────────────────────────────────────────────
+function BreakdownsTab({ equipmentId, breakdowns, showForm, setShowForm, expandedBreakdown, setExpandedBreakdown, editingBreakdown, setEditingBreakdown, breakdownEdit, setBreakdownEdit, onRefresh, surfaceStyle, inputStyle, inputCls, labelStyle }:
+  {
+    equipmentId: number; breakdowns: Breakdown[]; showForm: boolean; setShowForm: (v: boolean) => void;
+    expandedBreakdown: number | null; setExpandedBreakdown: (v: number | null) => void;
+    editingBreakdown: number | null; setEditingBreakdown: (v: number | null) => void;
+    breakdownEdit: Partial<Breakdown>; setBreakdownEdit: (v: Partial<Breakdown>) => void;
+    onRefresh: () => void; surfaceStyle: React.CSSProperties; inputStyle: React.CSSProperties; inputCls: string; labelStyle: React.CSSProperties;
+  }) {
+
+  const open = breakdowns.filter((b) => !["Closed", "Cancelled"].includes(b.status));
+  const closed = breakdowns.filter((b) => ["Closed", "Cancelled"].includes(b.status));
+
+  return (
+    <div>
+      {/* Header bar */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <p style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">
+            Breakdown & Revalidation Log
+          </p>
+          <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5">
+            Track equipment failures, maintenance, and post-maintenance revalidation
+          </p>
+        </div>
+        {!showForm && (
+          <button onClick={() => setShowForm(true)}
+            style={{ background: "var(--badge-over-bg)", color: "var(--badge-over-text)", border: "1px solid var(--badge-over-border)" }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity">
+            <Plus size={14} /> Report Breakdown
+          </button>
+        )}
+      </div>
+
+      {/* New breakdown form */}
+      {showForm && (
+        <NewBreakdownForm
+          equipmentId={equipmentId}
+          onSave={() => { setShowForm(false); onRefresh(); }}
+          onCancel={() => setShowForm(false)}
+          surfaceStyle={surfaceStyle}
+          inputStyle={inputStyle}
+          inputCls={inputCls}
+          labelStyle={labelStyle}
+        />
+      )}
+
+      {breakdowns.length === 0 && !showForm ? (
+        <div style={surfaceStyle} className="rounded-xl py-16 text-center">
+          <Wrench size={32} style={{ color: "var(--border)" }} className="mx-auto mb-3" />
+          <p style={{ color: "var(--text-muted)" }} className="text-sm font-medium">No breakdowns recorded</p>
+          <p style={{ color: "var(--text-subtle)" }} className="text-xs mt-1">Report a breakdown when equipment fails or requires unplanned maintenance</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Active breakdowns */}
+          {open.length > 0 && (
+            <div>
+              <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">Active ({open.length})</p>
+              <div className="space-y-3">
+                {open.map((bd) => (
+                  <BreakdownCard key={bd.id} bd={bd} equipmentId={equipmentId}
+                    expanded={expandedBreakdown === bd.id}
+                    onToggle={() => setExpandedBreakdown(expandedBreakdown === bd.id ? null : bd.id)}
+                    editing={editingBreakdown === bd.id}
+                    onStartEdit={() => { setEditingBreakdown(bd.id); setExpandedBreakdown(bd.id); }}
+                    onCancelEdit={() => setEditingBreakdown(null)}
+                    onSaved={onRefresh}
+                    surfaceStyle={surfaceStyle} inputStyle={inputStyle} inputCls={inputCls} labelStyle={labelStyle}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Closed breakdowns */}
+          {closed.length > 0 && (
+            <div>
+              <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3 mt-4">Closed / Cancelled ({closed.length})</p>
+              <div className="space-y-3">
+                {closed.map((bd) => (
+                  <BreakdownCard key={bd.id} bd={bd} equipmentId={equipmentId}
+                    expanded={expandedBreakdown === bd.id}
+                    onToggle={() => setExpandedBreakdown(expandedBreakdown === bd.id ? null : bd.id)}
+                    editing={editingBreakdown === bd.id}
+                    onStartEdit={() => { setEditingBreakdown(bd.id); setExpandedBreakdown(bd.id); }}
+                    onCancelEdit={() => setEditingBreakdown(null)}
+                    onSaved={onRefresh}
+                    surfaceStyle={surfaceStyle} inputStyle={inputStyle} inputCls={inputCls} labelStyle={labelStyle}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

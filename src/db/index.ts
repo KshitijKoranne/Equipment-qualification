@@ -75,6 +75,9 @@ export async function initDB() {
     try { await db.execute(sql); } catch { /* column exists */ }
   }
 
+  // Init breakdown tables
+  await initBreakdownTables();
+
   // Add new phases to existing equipment that only have 4 phases
   const equipList = await db.execute(`SELECT id FROM equipment`);
   for (const eq of equipList.rows) {
@@ -92,4 +95,53 @@ export async function initDB() {
       }
     }
   }
+}
+
+export async function initBreakdownTables() {
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS breakdowns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      equipment_id INTEGER NOT NULL,
+      breakdown_ref TEXT NOT NULL,
+      reported_date TEXT NOT NULL,
+      reported_by TEXT,
+      description TEXT NOT NULL,
+      root_cause TEXT,
+      breakdown_type TEXT NOT NULL DEFAULT 'Mechanical',
+      severity TEXT NOT NULL DEFAULT 'Minor',
+      maintenance_start TEXT,
+      maintenance_end TEXT,
+      maintenance_performed_by TEXT,
+      maintenance_details TEXT,
+      validation_impact TEXT NOT NULL DEFAULT 'No Impact',
+      impact_assessment TEXT,
+      status TEXT NOT NULL DEFAULT 'Open',
+      closure_date TEXT,
+      closed_by TEXT,
+      closure_remarks TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (equipment_id) REFERENCES equipment(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS revalidation_phases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      breakdown_id INTEGER NOT NULL,
+      phase TEXT NOT NULL,
+      protocol_number TEXT,
+      execution_date TEXT,
+      approval_date TEXT,
+      approved_by TEXT,
+      status TEXT NOT NULL DEFAULT 'Pending',
+      remarks TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (breakdown_id) REFERENCES breakdowns(id)
+    );
+  `);
+
+  // Attach breakdown attachments to either qualification or revalidation_phase
+  try {
+    await db.execute(`ALTER TABLE attachments ADD COLUMN revalidation_phase_id INTEGER`);
+  } catch { /* column exists */ }
 }

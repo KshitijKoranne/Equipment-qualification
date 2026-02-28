@@ -30,6 +30,8 @@
   --badge-over-bg:  #fee2e2; --badge-over-text: #991b1b; --badge-over-border: #fca5a5;
   --badge-fail-bg:  #ffedd5; --badge-fail-text: #9a3412; --badge-fail-border: #fdba74;
   --badge-warn-bg:  #fef3c7; --badge-warn-text: #92400e; --badge-warn-border: #fcd34d;
+  --badge-maint-bg: #e0e7ff; --badge-maint-text: #3730a3; --badge-maint-border: #a5b4fc;
+  --badge-reval-bg: #fdf2f8; --badge-reval-text: #9d174d; --badge-reval-border: #f9a8d4;
 
   /* Qual phase badges */
   --qbadge-pass-bg: #d1fae5; --qbadge-pass-text: #065f46; --qbadge-pass-border: #6ee7b7;
@@ -74,6 +76,8 @@
   --badge-over-bg:  #2d0c0c; --badge-over-text: #f85149; --badge-over-border: #6e1c1c;
   --badge-fail-bg:  #2d1800; --badge-fail-text: #fb8f44; --badge-fail-border: #5c3000;
   --badge-warn-bg:  #2d2000; --badge-warn-text: #e3b341; --badge-warn-border: #5c4000;
+  --badge-maint-bg: #0d1b3e; --badge-maint-text: #a5b4fc; --badge-maint-border: #3730a3;
+  --badge-reval-bg: #2d0d24; --badge-reval-text: #f9a8d4; --badge-reval-border: #9d174d;
 
   --qbadge-pass-bg: #0d2e1f; --qbadge-pass-text: #3fb950; --qbadge-pass-border: #238636;
   --qbadge-fail-bg: #2d0c0c; --qbadge-fail-text: #f85149; --qbadge-fail-border: #6e1c1c;

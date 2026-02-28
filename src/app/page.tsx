@@ -19,7 +19,9 @@ const STATUS_CONFIG: Record<string, { label: string; bgVar: string; textVar: str
   "Not Started":       { label: "Not Started",         bgVar: "--badge-none-bg", textVar: "--badge-none-text", borderVar: "--badge-none-border", dotBg: "#8b949e", icon: Clock },
   Overdue:             { label: "Overdue",              bgVar: "--badge-over-bg", textVar: "--badge-over-text", borderVar: "--badge-over-border", dotBg: "#f85149", icon: XCircle },
   Failed:              { label: "Failed",               bgVar: "--badge-fail-bg", textVar: "--badge-fail-text", borderVar: "--badge-fail-border", dotBg: "#fb8f44", icon: AlertTriangle },
-  "Requalification Due": { label: "Requalification Due", bgVar: "--badge-warn-bg", textVar: "--badge-warn-text", borderVar: "--badge-warn-border", dotBg: "#e3b341", icon: AlertTriangle },
+  "Requalification Due":   { label: "Requalification Due",   bgVar: "--badge-warn-bg",  textVar: "--badge-warn-text",  borderVar: "--badge-warn-border",  dotBg: "#e3b341", icon: AlertTriangle },
+  "Under Maintenance":     { label: "Under Maintenance",     bgVar: "--badge-maint-bg", textVar: "--badge-maint-text", borderVar: "--badge-maint-border", dotBg: "#a5b4fc", icon: Activity },
+  "Revalidation Required": { label: "Revalidation Required", bgVar: "--badge-reval-bg", textVar: "--badge-reval-text", borderVar: "--badge-reval-border", dotBg: "#f9a8d4", icon: AlertTriangle },
 };
 
 const PHASE_DOT: Record<string, string> = {
