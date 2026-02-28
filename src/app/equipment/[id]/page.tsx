@@ -20,7 +20,7 @@ type Qualification = {
 type AuditEntry = { id: number; action: string; details: string; changed_by: string; created_at: string; };
 
 type RevalidationPhase = { id: number; breakdown_id: number; phase: string; protocol_number: string; execution_date: string; approval_date: string; approved_by: string; status: string; remarks: string; };
-type Breakdown = {
+type History = {
   id: number; equipment_id: number; breakdown_ref: string; reported_date: string; reported_by: string;
   description: string; root_cause: string; breakdown_type: string; severity: string;
   maintenance_start: string; maintenance_end: string; maintenance_performed_by: string; maintenance_details: string;
@@ -76,13 +76,13 @@ export default function EquipmentDetail() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Equipment>>({});
   const [editQuals, setEditQuals] = useState<Qualification[]>([]);
-  const [activeTab, setActiveTab] = useState<"qualification" | "details" | "breakdowns" | "audit">("qualification");
+  const [activeTab, setActiveTab] = useState<"qualification" | "details" | "equipment-history" | "audit">("qualification");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [breakdowns, setBreakdowns] = useState<Breakdown[]>([]);
-  const [showBreakdownForm, setShowBreakdownForm] = useState(false);
-  const [expandedBreakdown, setExpandedBreakdown] = useState<number | null>(null);
-  const [editingBreakdown, setEditingBreakdown] = useState<number | null>(null);
-  const [breakdownEdit, setBreakdownEdit] = useState<Partial<Breakdown>>({});
+  const [histories, setHistories] = useState<History[]>([]);
+  const [showHistoryForm, setShowHistoryForm] = useState(false);
+  const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
+  const [editingHistory, setEditingHistory] = useState<number | null>(null);
+  const [historyEdit, setHistoryEdit] = useState<Partial<History>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -98,9 +98,9 @@ export default function EquipmentDetail() {
       setAuditLog(data.auditLog);
       setEditForm(data.equipment);
       setEditQuals(sorted);
-      // Fetch breakdowns
+      // Fetch histories
       const bdRes = await fetch(`/api/breakdowns/${id}`);
-      setBreakdowns(await bdRes.json());
+      setHistories(await bdRes.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [id]);
@@ -212,13 +212,13 @@ export default function EquipmentDetail() {
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Tabs */}
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }} className="flex gap-1 rounded-xl p-1 mb-6 w-fit">
-          {(["qualification", "details", "breakdowns", "audit"] as const).map((tab) => (
+          {(["qualification", "details", "equipment-history", "audit"] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               style={activeTab === tab
                 ? { background: "var(--text-primary)", color: "var(--bg-surface)" }
                 : { color: "var(--text-muted)", background: "transparent" }}
               className="px-4 py-2 text-sm font-medium rounded-lg transition-all">
-              {tab === "qualification" ? "Qualification Phases" : tab === "details" ? "Equipment Details" : tab === "breakdowns" ? "Breakdowns" : "Audit Log"}
+              {tab === "qualification" ? "Qualification Phases" : tab === "details" ? "Equipment Details" : tab === "equipment-history" ? "Equipment History" : "Audit Log"}
             </button>
           ))}
         </div>
@@ -478,19 +478,19 @@ export default function EquipmentDetail() {
           </div>
         )}
 
-        {/* Breakdowns Tab */}
-        {activeTab === "breakdowns" && (
-          <BreakdownsTab
+        {/* Equipment History Tab */}
+        {activeTab === "equipment-history" && (
+          <EquipmentHistoryTab
             equipmentId={Number(id)}
-            breakdowns={breakdowns}
-            showForm={showBreakdownForm}
-            setShowForm={setShowBreakdownForm}
-            expandedBreakdown={expandedBreakdown}
-            setExpandedBreakdown={setExpandedBreakdown}
-            editingBreakdown={editingBreakdown}
-            setEditingBreakdown={setEditingBreakdown}
-            breakdownEdit={breakdownEdit}
-            setBreakdownEdit={setBreakdownEdit}
+            histories={histories}
+            showForm={showHistoryForm}
+            setShowForm={setShowHistoryForm}
+            expandedHistory={expandedHistory}
+            setExpandedHistory={setExpandedHistory}
+            editingHistory={editingHistory}
+            setEditingHistory={setEditingHistory}
+            historyEdit={historyEdit}
+            setHistoryEdit={setHistoryEdit}
             onRefresh={fetchData}
             surfaceStyle={surfaceStyle}
             inputStyle={inputStyle}
@@ -577,7 +577,7 @@ function Detail({ label, value, mono = false }: { label: string; value: string |
   );
 }
 
-// ─── Breakdown Types & Constants ────────────────────────────────────────────
+// ─── History Types & Constants ────────────────────────────────────────────
 const BREAKDOWN_TYPES = ["Mechanical", "Electrical", "Software/Firmware", "Pneumatic/Hydraulic", "Calibration Failure", "Contamination", "Wear & Tear", "Other"];
 const SEVERITY_LEVELS = ["Minor", "Moderate", "Major", "Critical"];
 const VALIDATION_IMPACTS = ["No Impact", "Partial Revalidation Required", "Full Revalidation Required"];
@@ -601,13 +601,13 @@ const BD_STATUS_COLORS: Record<string, { bg: string; text: string; border: strin
   Cancelled:                  { bg: "--badge-pend-bg",  text: "--badge-pend-text",  border: "--badge-pend-border" },
 };
 
-// ─── New Breakdown Form ──────────────────────────────────────────────────────
-function NewBreakdownForm({ equipmentId, onSave, onCancel, surfaceStyle, inputStyle, inputCls, labelStyle }:
+// ─── New History Form ──────────────────────────────────────────────────────
+function NewHistoryForm({ equipmentId, onSave, onCancel, surfaceStyle, inputStyle, inputCls, labelStyle }:
   { equipmentId: number; onSave: () => void; onCancel: () => void; surfaceStyle: React.CSSProperties; inputStyle: React.CSSProperties; inputCls: string; labelStyle: React.CSSProperties }) {
 
   const today = new Date().toISOString().split("T")[0];
   const [form, setForm] = useState({
-    breakdown_ref: `BD-${Date.now().toString().slice(-6)}`,
+    breakdown_ref: `BH-${Date.now().toString().slice(-6)}`,
     reported_date: today,
     reported_by: "",
     description: "",
@@ -647,14 +647,14 @@ function NewBreakdownForm({ equipmentId, onSave, onCancel, surfaceStyle, inputSt
   return (
     <div style={surfaceStyle} className="rounded-xl overflow-hidden mb-6">
       <div style={{ borderBottom: "1px solid var(--border-light)", background: "var(--bg-surface-2)" }} className="px-5 py-3 flex items-center justify-between">
-        <span style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">Report New Breakdown</span>
+        <span style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">Log Equipment Event</span>
       </div>
       <div className="px-5 py-5 space-y-4">
         {/* Identification */}
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label style={labelStyle} className="block text-xs font-medium mb-1.5">Reference No.</label>
-            <input value={form.breakdown_ref} onChange={(e) => set("breakdown_ref", e.target.value)} style={inputStyle} className={inputCls} placeholder="BD-001" />
+            <input value={form.breakdown_ref} onChange={(e) => set("breakdown_ref", e.target.value)} style={inputStyle} className={inputCls} placeholder="BH-001" />
           </div>
           <div>
             <label style={labelStyle} className="block text-xs font-medium mb-1.5">Reported Date *</label>
@@ -666,13 +666,13 @@ function NewBreakdownForm({ equipmentId, onSave, onCancel, surfaceStyle, inputSt
           </div>
         </div>
         <div>
-          <label style={labelStyle} className="block text-xs font-medium mb-1.5">Breakdown Description *</label>
+          <label style={labelStyle} className="block text-xs font-medium mb-1.5">History Description *</label>
           <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3}
             style={inputStyle} className={`${inputCls} resize-none`} placeholder="Describe what happened, symptoms observed..." />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label style={labelStyle} className="block text-xs font-medium mb-1.5">Breakdown Type</label>
+            <label style={labelStyle} className="block text-xs font-medium mb-1.5">History Type</label>
             <select value={form.breakdown_type} onChange={(e) => set("breakdown_type", e.target.value)} style={inputStyle} className={inputCls}>
               {BREAKDOWN_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
@@ -722,7 +722,7 @@ function NewBreakdownForm({ equipmentId, onSave, onCancel, surfaceStyle, inputSt
           <button onClick={submit} disabled={saving}
             style={{ background: "var(--badge-over-text)", color: "#fff" }}
             className="px-5 py-2 text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50">
-            {saving ? "Saving..." : "Report Breakdown"}
+            {saving ? "Saving..." : "Log Event"}
           </button>
         </div>
       </div>
@@ -730,15 +730,15 @@ function NewBreakdownForm({ equipmentId, onSave, onCancel, surfaceStyle, inputSt
   );
 }
 
-// ─── Breakdown Card ───────────────────────────────────────────────────────────
-function BreakdownCard({ bd, equipmentId, expanded, onToggle, editing, onStartEdit, onCancelEdit, onSaved, surfaceStyle, inputStyle, inputCls, labelStyle }:
+// ─── History Card ───────────────────────────────────────────────────────────
+function HistoryCard({ bd, equipmentId, expanded, onToggle, editing, onStartEdit, onCancelEdit, onSaved, surfaceStyle, inputStyle, inputCls, labelStyle }:
   {
-    bd: Breakdown; equipmentId: number; expanded: boolean; onToggle: () => void;
+    bd: History; equipmentId: number; expanded: boolean; onToggle: () => void;
     editing: boolean; onStartEdit: () => void; onCancelEdit: () => void; onSaved: () => void;
     surfaceStyle: React.CSSProperties; inputStyle: React.CSSProperties; inputCls: string; labelStyle: React.CSSProperties;
   }) {
 
-  const [form, setForm] = useState<Partial<Breakdown>>(bd);
+  const [form, setForm] = useState<Partial<History>>(bd);
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
   const setRPField = (rpId: number, field: string, value: string) => {
@@ -879,7 +879,7 @@ function BreakdownCard({ bd, equipmentId, expanded, onToggle, editing, onStartEd
               <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider pt-2">Status & Closure</p>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">Breakdown Status</label>
+                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">History Status</label>
                   <select value={form.status || "Open"} onChange={(e) => set("status", e.target.value)} style={inputStyle} className={inputCls}>
                     {BD_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
                   </select>
@@ -918,7 +918,7 @@ function BreakdownCard({ bd, equipmentId, expanded, onToggle, editing, onStartEd
             // View mode
             <div className="px-5 py-5 space-y-5">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-                <Detail label="Breakdown Type" value={bd.breakdown_type} />
+                <Detail label="History Type" value={bd.breakdown_type} />
                 <Detail label="Root Cause" value={bd.root_cause} />
                 <Detail label="Validation Impact" value={bd.validation_impact} />
                 <Detail label="Maintenance Start" value={bd.maintenance_start ? new Date(bd.maintenance_start).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
@@ -985,18 +985,18 @@ function BreakdownCard({ bd, equipmentId, expanded, onToggle, editing, onStartEd
   );
 }
 
-// ─── Breakdowns Tab Container ────────────────────────────────────────────────
-function BreakdownsTab({ equipmentId, breakdowns, showForm, setShowForm, expandedBreakdown, setExpandedBreakdown, editingBreakdown, setEditingBreakdown, breakdownEdit, setBreakdownEdit, onRefresh, surfaceStyle, inputStyle, inputCls, labelStyle }:
+// ─── Equipment History Tab Container ────────────────────────────────────────────────
+function EquipmentHistoryTab({ equipmentId, histories, showForm, setShowForm, expandedHistory, setExpandedHistory, editingHistory, setEditingHistory, historyEdit, setHistoryEdit, onRefresh, surfaceStyle, inputStyle, inputCls, labelStyle }:
   {
-    equipmentId: number; breakdowns: Breakdown[]; showForm: boolean; setShowForm: (v: boolean) => void;
-    expandedBreakdown: number | null; setExpandedBreakdown: (v: number | null) => void;
-    editingBreakdown: number | null; setEditingBreakdown: (v: number | null) => void;
-    breakdownEdit: Partial<Breakdown>; setBreakdownEdit: (v: Partial<Breakdown>) => void;
+    equipmentId: number; histories: History[]; showForm: boolean; setShowForm: (v: boolean) => void;
+    expandedHistory: number | null; setExpandedHistory: (v: number | null) => void;
+    editingHistory: number | null; setEditingHistory: (v: number | null) => void;
+    historyEdit: Partial<History>; setHistoryEdit: (v: Partial<History>) => void;
     onRefresh: () => void; surfaceStyle: React.CSSProperties; inputStyle: React.CSSProperties; inputCls: string; labelStyle: React.CSSProperties;
   }) {
 
-  const open = breakdowns.filter((b) => !["Closed", "Cancelled"].includes(b.status));
-  const closed = breakdowns.filter((b) => ["Closed", "Cancelled"].includes(b.status));
+  const open = histories.filter((b) => !["Closed", "Cancelled"].includes(b.status));
+  const closed = histories.filter((b) => ["Closed", "Cancelled"].includes(b.status));
 
   return (
     <div>
@@ -1004,7 +1004,7 @@ function BreakdownsTab({ equipmentId, breakdowns, showForm, setShowForm, expande
       <div className="flex items-center justify-between mb-5">
         <div>
           <p style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">
-            Breakdown & Revalidation Log
+            Equipment History & Revalidation Log
           </p>
           <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5">
             Track equipment failures, maintenance, and post-maintenance revalidation
@@ -1014,14 +1014,14 @@ function BreakdownsTab({ equipmentId, breakdowns, showForm, setShowForm, expande
           <button onClick={() => setShowForm(true)}
             style={{ background: "var(--badge-over-bg)", color: "var(--badge-over-text)", border: "1px solid var(--badge-over-border)" }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity">
-            <Plus size={14} /> Report Breakdown
+            <Plus size={14} /> Log Event
           </button>
         )}
       </div>
 
-      {/* New breakdown form */}
+      {/* New history form */}
       {showForm && (
-        <NewBreakdownForm
+        <NewHistoryForm
           equipmentId={equipmentId}
           onSave={() => { setShowForm(false); onRefresh(); }}
           onCancel={() => setShowForm(false)}
@@ -1032,26 +1032,26 @@ function BreakdownsTab({ equipmentId, breakdowns, showForm, setShowForm, expande
         />
       )}
 
-      {breakdowns.length === 0 && !showForm ? (
+      {histories.length === 0 && !showForm ? (
         <div style={surfaceStyle} className="rounded-xl py-16 text-center">
           <Wrench size={32} style={{ color: "var(--border)" }} className="mx-auto mb-3" />
-          <p style={{ color: "var(--text-muted)" }} className="text-sm font-medium">No breakdowns recorded</p>
-          <p style={{ color: "var(--text-subtle)" }} className="text-xs mt-1">Report a breakdown when equipment fails or requires unplanned maintenance</p>
+          <p style={{ color: "var(--text-muted)" }} className="text-sm font-medium">No equipment history recorded</p>
+          <p style={{ color: "var(--text-subtle)" }} className="text-xs mt-1">Report a history when equipment fails or requires unplanned maintenance</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Active breakdowns */}
+          {/* Active events */}
           {open.length > 0 && (
             <div>
               <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">Active ({open.length})</p>
               <div className="space-y-3">
                 {open.map((bd) => (
-                  <BreakdownCard key={bd.id} bd={bd} equipmentId={equipmentId}
-                    expanded={expandedBreakdown === bd.id}
-                    onToggle={() => setExpandedBreakdown(expandedBreakdown === bd.id ? null : bd.id)}
-                    editing={editingBreakdown === bd.id}
-                    onStartEdit={() => { setEditingBreakdown(bd.id); setExpandedBreakdown(bd.id); }}
-                    onCancelEdit={() => setEditingBreakdown(null)}
+                  <HistoryCard key={bd.id} bd={bd} equipmentId={equipmentId}
+                    expanded={expandedHistory === bd.id}
+                    onToggle={() => setExpandedHistory(expandedHistory === bd.id ? null : bd.id)}
+                    editing={editingHistory === bd.id}
+                    onStartEdit={() => { setEditingHistory(bd.id); setExpandedHistory(bd.id); }}
+                    onCancelEdit={() => setEditingHistory(null)}
                     onSaved={onRefresh}
                     surfaceStyle={surfaceStyle} inputStyle={inputStyle} inputCls={inputCls} labelStyle={labelStyle}
                   />
@@ -1060,18 +1060,18 @@ function BreakdownsTab({ equipmentId, breakdowns, showForm, setShowForm, expande
             </div>
           )}
 
-          {/* Closed breakdowns */}
+          {/* Closed events */}
           {closed.length > 0 && (
             <div>
               <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3 mt-4">Closed / Cancelled ({closed.length})</p>
               <div className="space-y-3">
                 {closed.map((bd) => (
-                  <BreakdownCard key={bd.id} bd={bd} equipmentId={equipmentId}
-                    expanded={expandedBreakdown === bd.id}
-                    onToggle={() => setExpandedBreakdown(expandedBreakdown === bd.id ? null : bd.id)}
-                    editing={editingBreakdown === bd.id}
-                    onStartEdit={() => { setEditingBreakdown(bd.id); setExpandedBreakdown(bd.id); }}
-                    onCancelEdit={() => setEditingBreakdown(null)}
+                  <HistoryCard key={bd.id} bd={bd} equipmentId={equipmentId}
+                    expanded={expandedHistory === bd.id}
+                    onToggle={() => setExpandedHistory(expandedHistory === bd.id ? null : bd.id)}
+                    editing={editingHistory === bd.id}
+                    onStartEdit={() => { setEditingHistory(bd.id); setExpandedHistory(bd.id); }}
+                    onCancelEdit={() => setEditingHistory(null)}
                     onSaved={onRefresh}
                     surfaceStyle={surfaceStyle} inputStyle={inputStyle} inputCls={inputCls} labelStyle={labelStyle}
                   />

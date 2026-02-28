@@ -203,7 +203,7 @@ export default function Dashboard() {
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
-                    {["Equipment ID", "Name", "Type", "Department", "Location", "Qualification Phases", "Status", "Next Due"].map((h) => (
+                    {["Name", "Qualification Phases", "Status", "Next Due"].map((h) => (
                       <th key={h} style={{ color: "var(--text-muted)" }} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -214,13 +214,7 @@ export default function Dashboard() {
                       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                       style={{ cursor: "pointer", borderBottom: i === filtered.length - 1 ? "none" : "1px solid var(--border-light)" }}>
-                      <td className="px-5 py-3.5">
-                        <span style={{ background: "var(--bg-tag)", color: "var(--text-tag)" }} className="text-xs font-mono font-semibold px-2 py-0.5 rounded">{eq.equipment_id}</span>
-                      </td>
                       <td className="px-5 py-3.5"><span style={{ color: "var(--text-primary)" }} className="text-sm font-medium">{eq.name}</span></td>
-                      <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.type}</td>
-                      <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.department}</td>
-                      <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>{eq.location}</td>
                       <td className="px-5 py-3.5"><PhaseBar urs={eq.urs_status} dq={eq.dq_status} fat={eq.fat_status} sat={eq.sat_status} iq={eq.iq_status} oq={eq.oq_status} pq={eq.pq_status} rq={eq.rq_status} /></td>
                       <td className="px-5 py-3.5"><StatusBadge status={eq.status} /></td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>
