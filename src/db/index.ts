@@ -20,6 +20,7 @@ export async function initDB() {
       installation_date TEXT,
       status TEXT NOT NULL DEFAULT 'Not Started',
       requalification_frequency TEXT DEFAULT 'Annual',
+      requalification_tolerance TEXT DEFAULT '1',
       next_due_date TEXT,
       notes TEXT,
       created_at TEXT DEFAULT (datetime('now')),
@@ -51,4 +52,11 @@ export async function initDB() {
       FOREIGN KEY (equipment_id) REFERENCES equipment(id)
     );
   `);
+
+  // Add tolerance column if upgrading existing DB (safe to run multiple times)
+  try {
+    await db.execute(`ALTER TABLE equipment ADD COLUMN requalification_tolerance TEXT DEFAULT '1'`);
+  } catch {
+    // Column already exists, ignore
+  }
 }

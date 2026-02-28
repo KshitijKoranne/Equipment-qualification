@@ -29,16 +29,29 @@ export async function POST(req: NextRequest) {
   await ensureDB();
   const body = await req.json();
 
-  const { equipment_id, name, type, department, location, manufacturer, model, serial_number, installation_date, requalification_frequency, notes } = body;
+  const {
+    equipment_id, name, type, department, location,
+    manufacturer, model, serial_number, installation_date,
+    requalification_frequency, requalification_tolerance, notes
+  } = body;
 
   if (!equipment_id || !name || !type || !department || !location) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   const result = await db.execute({
-    sql: `INSERT INTO equipment (equipment_id, name, type, department, location, manufacturer, model, serial_number, installation_date, requalification_frequency, notes, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Started')`,
-    args: [equipment_id, name, type, department, location, manufacturer || null, model || null, serial_number || null, installation_date || null, requalification_frequency || "Annual", notes || null],
+    sql: `INSERT INTO equipment 
+          (equipment_id, name, type, department, location, manufacturer, model, serial_number, 
+           installation_date, requalification_frequency, requalification_tolerance, notes, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Started')`,
+    args: [
+      equipment_id, name, type, department, location,
+      manufacturer || null, model || null, serial_number || null,
+      installation_date || null,
+      requalification_frequency || "Annual",
+      requalification_tolerance || "1",
+      notes || null
+    ],
   });
 
   const newId = Number(result.lastInsertRowid);
@@ -52,7 +65,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Audit log
   await db.execute({
     sql: `INSERT INTO audit_log (equipment_id, action, details) VALUES (?, 'Equipment Created', ?)`,
     args: [newId, `Equipment ${name} (${equipment_id}) added to system`],

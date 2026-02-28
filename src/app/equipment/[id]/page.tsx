@@ -19,6 +19,7 @@ type Equipment = {
   installation_date: string;
   status: string;
   requalification_frequency: string;
+  requalification_tolerance: string;
   next_due_date: string;
   notes: string;
 };
@@ -320,7 +321,24 @@ export default function EquipmentDetail() {
                   <EditField label="Model" value={editForm.model || ""} onChange={(v) => setEditForm((p) => ({ ...p, model: v }))} />
                   <EditField label="Serial Number" value={editForm.serial_number || ""} onChange={(v) => setEditForm((p) => ({ ...p, serial_number: v }))} />
                   <EditField label="Installation Date" type="date" value={editForm.installation_date || ""} onChange={(v) => setEditForm((p) => ({ ...p, installation_date: v }))} />
-                  <EditField label="Requalification Frequency" value={editForm.requalification_frequency || ""} onChange={(v) => setEditForm((p) => ({ ...p, requalification_frequency: v }))} />
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Requalification Frequency</label>
+                    <select value={editForm.requalification_frequency || "Annual"} onChange={(e) => setEditForm((p) => ({ ...p, requalification_frequency: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white">
+                      <option value="Annual">Annual (Every 1 Year)</option>
+                      <option value="Every 2 Years">Every 2 Years</option>
+                      <option value="Every 5 Years">Every 5 Years</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5">Tolerance Window</label>
+                    <select value={editForm.requalification_tolerance || "1"} onChange={(e) => setEditForm((p) => ({ ...p, requalification_tolerance: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white">
+                      <option value="1">± 1 Month</option>
+                      <option value="2">± 2 Months</option>
+                      <option value="3">± 3 Months</option>
+                    </select>
+                  </div>
                   <EditField label="Next Due Date" type="date" value={editForm.next_due_date || ""} onChange={(v) => setEditForm((p) => ({ ...p, next_due_date: v }))} />
                   <div className="col-span-2 md:col-span-3">
                     <label className="block text-xs font-medium text-slate-500 mb-1.5">Notes</label>
@@ -340,6 +358,7 @@ export default function EquipmentDetail() {
                   <Detail label="Serial Number" value={equipment.serial_number} />
                   <Detail label="Installation Date" value={equipment.installation_date ? new Date(equipment.installation_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
                   <Detail label="Requalification Frequency" value={equipment.requalification_frequency} />
+                  <Detail label="Tolerance Window" value={equipment.requalification_tolerance ? `± ${equipment.requalification_tolerance} Month${equipment.requalification_tolerance === "1" ? "" : "s"}` : "± 1 Month"} />
                   <Detail label="Next Due Date" value={equipment.next_due_date ? new Date(equipment.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
                   {equipment.notes && (
                     <div className="col-span-2 md:col-span-3">

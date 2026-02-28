@@ -9,7 +9,18 @@ type Props = {
 
 const EQUIPMENT_TYPES = ["Manufacturing", "Laboratory", "Utility", "QC", "Packaging", "Storage"];
 const DEPARTMENTS = ["API Manufacturing", "Quality Control", "Formulation", "Packaging", "Warehouse", "Utilities", "R&D"];
-const FREQ_OPTIONS = ["Semi-Annual", "Annual", "Biennial", "As Required"];
+
+const FREQ_OPTIONS = [
+  { value: "Annual", label: "Annual (Every 1 Year)" },
+  { value: "Every 2 Years", label: "Every 2 Years" },
+  { value: "Every 5 Years", label: "Every 5 Years" },
+];
+
+const TOLERANCE_OPTIONS = [
+  { value: "1", label: "\u00b1 1 Month" },
+  { value: "2", label: "\u00b1 2 Months" },
+  { value: "3", label: "\u00b1 3 Months" },
+];
 
 export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
@@ -25,6 +36,7 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
     serial_number: "",
     installation_date: "",
     requalification_frequency: "Annual",
+    requalification_tolerance: "1",
     notes: "",
   });
 
@@ -76,6 +88,7 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-130px)]">
           <div className="px-6 py-5 space-y-5">
+
             {/* Section: Identification */}
             <div>
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Identification</h3>
@@ -84,8 +97,8 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
                 <Field label="Equipment Name *" name="name" value={form.name} onChange={handleChange} placeholder="e.g. HPLC System" />
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
-                <SelectField label="Equipment Type" name="type" value={form.type} onChange={handleChange} options={EQUIPMENT_TYPES} />
-                <SelectField label="Department" name="department" value={form.department} onChange={handleChange} options={DEPARTMENTS} />
+                <SelectField label="Equipment Type" name="type" value={form.type} onChange={handleChange} options={EQUIPMENT_TYPES.map(o => ({ value: o, label: o }))} />
+                <SelectField label="Department" name="department" value={form.department} onChange={handleChange} options={DEPARTMENTS.map(o => ({ value: o, label: o }))} />
               </div>
               <div className="mt-4">
                 <Field label="Location *" name="location" value={form.location} onChange={handleChange} placeholder="e.g. Lab A, Room 101" />
@@ -100,10 +113,33 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
                 <Field label="Model" name="model" value={form.model} onChange={handleChange} placeholder="e.g. 1260 Infinity" />
                 <Field label="Serial Number" name="serial_number" value={form.serial_number} onChange={handleChange} placeholder="e.g. SN-12345" />
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="mt-4">
                 <Field label="Installation Date" name="installation_date" type="date" value={form.installation_date} onChange={handleChange} />
-                <SelectField label="Requalification Frequency" name="requalification_frequency" value={form.requalification_frequency} onChange={handleChange} options={FREQ_OPTIONS} />
               </div>
+            </div>
+
+            {/* Section: Requalification Schedule */}
+            <div>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Requalification Schedule</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <SelectField
+                  label="Requalification Frequency"
+                  name="requalification_frequency"
+                  value={form.requalification_frequency}
+                  onChange={handleChange}
+                  options={FREQ_OPTIONS}
+                />
+                <SelectField
+                  label="Tolerance Window"
+                  name="requalification_tolerance"
+                  value={form.requalification_tolerance}
+                  onChange={handleChange}
+                  options={TOLERANCE_OPTIONS}
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Requalification must be completed within the tolerance window before or after the due date.
+              </p>
             </div>
 
             {/* Notes */}
@@ -168,7 +204,7 @@ function Field({
 function SelectField({
   label, name, value, onChange, options
 }: {
-  label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: string[];
+  label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: { value: string; label: string }[];
 }) {
   return (
     <div>
@@ -179,7 +215,7 @@ function SelectField({
         onChange={onChange}
         className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
       >
-        {options.map((o) => <option key={o}>{o}</option>)}
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
   );

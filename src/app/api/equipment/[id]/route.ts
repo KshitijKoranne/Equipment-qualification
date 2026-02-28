@@ -44,14 +44,28 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const body = await req.json();
 
-  const { name, type, department, location, manufacturer, model, serial_number, installation_date, requalification_frequency, next_due_date, notes, status, qualifications } = body;
+  const {
+    name, type, department, location, manufacturer, model,
+    serial_number, installation_date, requalification_frequency,
+    requalification_tolerance, next_due_date, notes, status, qualifications
+  } = body;
 
   await db.execute({
-    sql: `UPDATE equipment SET name=?, type=?, department=?, location=?, manufacturer=?, model=?, serial_number=?, installation_date=?, requalification_frequency=?, next_due_date=?, notes=?, status=?, updated_at=datetime('now') WHERE id=?`,
-    args: [name, type, department, location, manufacturer || null, model || null, serial_number || null, installation_date || null, requalification_frequency || "Annual", next_due_date || null, notes || null, status, id],
+    sql: `UPDATE equipment SET 
+          name=?, type=?, department=?, location=?, manufacturer=?, model=?, serial_number=?,
+          installation_date=?, requalification_frequency=?, requalification_tolerance=?,
+          next_due_date=?, notes=?, status=?, updated_at=datetime('now')
+          WHERE id=?`,
+    args: [
+      name, type, department, location,
+      manufacturer || null, model || null, serial_number || null,
+      installation_date || null,
+      requalification_frequency || "Annual",
+      requalification_tolerance || "1",
+      next_due_date || null, notes || null, status, id
+    ],
   });
 
-  // Update qualification phases if provided
   if (qualifications && Array.isArray(qualifications)) {
     for (const q of qualifications) {
       await db.execute({
@@ -61,7 +75,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  // Recalculate overall equipment status based on phases
+  // Recalculate overall status
   const phases = await db.execute({
     sql: `SELECT status FROM qualifications WHERE equipment_id = ?`,
     args: [id],
