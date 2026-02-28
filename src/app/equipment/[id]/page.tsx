@@ -11,6 +11,7 @@ type Equipment = {
   serial_number: string; installation_date: string; status: string;
   requalification_frequency: string; requalification_tolerance: string;
   next_due_date: string; notes: string;
+  change_control_number: string; urs_number: string; urs_approval_date: string; capacity: string;
 };
 type Qualification = {
   id: number; phase: string; protocol_number: string; execution_date: string;
@@ -338,29 +339,105 @@ export default function EquipmentDetail() {
 
         {/* Equipment Details */}
         {activeTab === "details" && (
-          <div style={surfaceStyle} className="rounded-xl p-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
+          <div className="space-y-5">
+            {/* Section: Change Control & URS */}
+            <Section title="Change Control & URS Reference" surfaceStyle={surfaceStyle}>
               {editing ? (
-                <>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
                   {[
-                    { label: "Equipment Name", key: "name" }, { label: "Type", key: "type" },
-                    { label: "Department", key: "department" }, { label: "Location", key: "location" },
-                    { label: "Manufacturer", key: "manufacturer" }, { label: "Model", key: "model" },
-                    { label: "Serial Number", key: "serial_number" },
-                  ].map(({ label, key }) => (
+                    { label: "Change Control Number", key: "change_control_number", placeholder: "e.g. CC-2024-001" },
+                    { label: "URS Reference Number",  key: "urs_number",            placeholder: "e.g. URS-HPLC-001" },
+                  ].map(({ label, key, placeholder }) => (
                     <div key={key}>
                       <label style={labelStyle} className="block text-xs font-medium mb-1.5">{label}</label>
                       <input value={(editForm as Record<string, string>)[key] || ""}
                         onChange={(e) => setEditForm((p) => ({ ...p, [key]: e.target.value }))}
-                        style={inputStyle} className={inputCls} />
+                        style={inputStyle} className={inputCls} placeholder={placeholder} />
+                    </div>
+                  ))}
+                  <div>
+                    <label style={labelStyle} className="block text-xs font-medium mb-1.5">URS Approval Date</label>
+                    <input type="date" value={editForm.urs_approval_date || ""} onChange={(e) => setEditForm((p) => ({ ...p, urs_approval_date: e.target.value }))} style={inputStyle} className={inputCls} />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
+                  <Detail label="Change Control Number" value={equipment.change_control_number} mono />
+                  <Detail label="URS Reference Number"  value={equipment.urs_number} mono />
+                  <Detail label="URS Approval Date"     value={equipment.urs_approval_date ? new Date(equipment.urs_approval_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                </div>
+              )}
+            </Section>
+
+            {/* Section: Equipment Identification */}
+            <Section title="Equipment Identification" surfaceStyle={surfaceStyle}>
+              {editing ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
+                  {[
+                    { label: "Equipment ID (Tag No.)", key: "equipment_id", placeholder: "Added after procurement e.g. HPLC-001" },
+                    { label: "Equipment Name",         key: "name",         placeholder: "" },
+                    { label: "Type",                   key: "type",         placeholder: "" },
+                    { label: "Department",             key: "department",   placeholder: "" },
+                    { label: "Location",               key: "location",     placeholder: "" },
+                    { label: "Capacity",               key: "capacity",     placeholder: "e.g. 500L, 0–300°C" },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key}>
+                      <label style={labelStyle} className="block text-xs font-medium mb-1.5">{label}</label>
+                      <input value={(editForm as Record<string, string>)[key] || ""}
+                        onChange={(e) => setEditForm((p) => ({ ...p, [key]: e.target.value }))}
+                        style={inputStyle} className={inputCls} placeholder={placeholder} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
+                  <Detail label="Equipment ID (Tag No.)" value={equipment.equipment_id} mono />
+                  <Detail label="Equipment Name"         value={equipment.name} />
+                  <Detail label="Type"                   value={equipment.type} />
+                  <Detail label="Department"             value={equipment.department} />
+                  <Detail label="Location"               value={equipment.location} />
+                  <Detail label="Capacity"               value={equipment.capacity} />
+                </div>
+              )}
+            </Section>
+
+            {/* Section: Technical Details */}
+            <Section title="Technical Details" surfaceStyle={surfaceStyle}>
+              {editing ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
+                  {[
+                    { label: "Manufacturer",   key: "manufacturer",   placeholder: "e.g. Agilent" },
+                    { label: "Model",          key: "model",          placeholder: "e.g. 1260 Infinity" },
+                    { label: "Serial Number",  key: "serial_number",  placeholder: "e.g. SN-12345" },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key}>
+                      <label style={labelStyle} className="block text-xs font-medium mb-1.5">{label}</label>
+                      <input value={(editForm as Record<string, string>)[key] || ""}
+                        onChange={(e) => setEditForm((p) => ({ ...p, [key]: e.target.value }))}
+                        style={inputStyle} className={inputCls} placeholder={placeholder} />
                     </div>
                   ))}
                   <div>
                     <label style={labelStyle} className="block text-xs font-medium mb-1.5">Installation Date</label>
                     <input type="date" value={editForm.installation_date || ""} onChange={(e) => setEditForm((p) => ({ ...p, installation_date: e.target.value }))} style={inputStyle} className={inputCls} />
                   </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
+                  <Detail label="Manufacturer"      value={equipment.manufacturer} />
+                  <Detail label="Model"             value={equipment.model} />
+                  <Detail label="Serial Number"     value={equipment.serial_number} mono />
+                  <Detail label="Installation Date" value={equipment.installation_date ? new Date(equipment.installation_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                </div>
+              )}
+            </Section>
+
+            {/* Section: Requalification Schedule */}
+            <Section title="Requalification Schedule" surfaceStyle={surfaceStyle}>
+              {editing ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
                   <div>
-                    <label style={labelStyle} className="block text-xs font-medium mb-1.5">Requalification Frequency</label>
+                    <label style={labelStyle} className="block text-xs font-medium mb-1.5">Frequency</label>
                     <select value={editForm.requalification_frequency || "Annual"} onChange={(e) => setEditForm((p) => ({ ...p, requalification_frequency: e.target.value }))} style={inputStyle} className={inputCls}>
                       <option value="Annual">Annual (Every 1 Year)</option>
                       <option value="Every 2 Years">Every 2 Years</option>
@@ -383,30 +460,21 @@ export default function EquipmentDetail() {
                     <label style={labelStyle} className="block text-xs font-medium mb-1.5">Notes</label>
                     <textarea value={editForm.notes || ""} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} rows={3} style={inputStyle} className={`${inputCls} resize-none`} />
                   </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <Detail label="Equipment ID" value={equipment.equipment_id} mono />
-                  <Detail label="Equipment Name" value={equipment.name} />
-                  <Detail label="Type" value={equipment.type} />
-                  <Detail label="Department" value={equipment.department} />
-                  <Detail label="Location" value={equipment.location} />
-                  <Detail label="Manufacturer" value={equipment.manufacturer} />
-                  <Detail label="Model" value={equipment.model} />
-                  <Detail label="Serial Number" value={equipment.serial_number} />
-                  <Detail label="Installation Date" value={equipment.installation_date ? new Date(equipment.installation_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
-                  <Detail label="Requalification Frequency" value={equipment.requalification_frequency} />
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
+                  <Detail label="Frequency"        value={equipment.requalification_frequency} />
                   <Detail label="Tolerance Window" value={equipment.requalification_tolerance ? `± ${equipment.requalification_tolerance} Month${equipment.requalification_tolerance === "1" ? "" : "s"}` : "± 1 Month"} />
-                  <Detail label="Next Due Date" value={equipment.next_due_date ? new Date(equipment.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                  <Detail label="Next Due Date"    value={equipment.next_due_date ? new Date(equipment.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
                   {equipment.notes && (
                     <div className="col-span-2 md:col-span-3">
                       <p style={labelStyle} className="text-xs font-medium mb-1">Notes</p>
                       <p style={{ color: "var(--text-secondary)" }} className="text-sm leading-relaxed">{equipment.notes}</p>
                     </div>
                   )}
-                </>
+                </div>
               )}
-            </div>
+            </Section>
           </div>
         )}
 
@@ -483,6 +551,17 @@ export default function EquipmentDetail() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Section({ title, children, surfaceStyle }: { title: string; children: React.ReactNode; surfaceStyle: React.CSSProperties }) {
+  return (
+    <div style={surfaceStyle} className="rounded-xl overflow-hidden">
+      <div style={{ borderBottom: "1px solid var(--border-light)", background: "var(--bg-surface-2)" }} className="px-6 py-3">
+        <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider">{title}</p>
+      </div>
+      <div className="px-6 py-5">{children}</div>
     </div>
   );
 }

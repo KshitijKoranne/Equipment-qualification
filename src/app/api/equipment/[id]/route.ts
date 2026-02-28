@@ -47,14 +47,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const {
     name, type, department, location, manufacturer, model,
     serial_number, installation_date, requalification_frequency,
-    requalification_tolerance, next_due_date, notes, status, qualifications
+    requalification_tolerance, next_due_date, notes, status, qualifications,
+    equipment_id, change_control_number, urs_number, urs_approval_date, capacity,
   } = body;
 
   await db.execute({
     sql: `UPDATE equipment SET 
           name=?, type=?, department=?, location=?, manufacturer=?, model=?, serial_number=?,
           installation_date=?, requalification_frequency=?, requalification_tolerance=?,
-          next_due_date=?, notes=?, status=?, updated_at=datetime('now')
+          next_due_date=?, notes=?, status=?, equipment_id=?,
+          change_control_number=?, urs_number=?, urs_approval_date=?, capacity=?,
+          updated_at=datetime('now')
           WHERE id=?`,
     args: [
       name, type, department, location,
@@ -62,7 +65,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       installation_date || null,
       requalification_frequency || "Annual",
       requalification_tolerance || "1",
-      next_due_date || null, notes || null, status, id
+      next_due_date || null, notes || null, status,
+      equipment_id || null,
+      change_control_number || null, urs_number || null,
+      urs_approval_date || null, capacity || null,
+      id,
     ],
   });
 

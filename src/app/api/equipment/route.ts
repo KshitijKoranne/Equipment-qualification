@@ -27,22 +27,38 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   await ensureDB();
   const body = await req.json();
-  const { equipment_id, name, type, department, location, manufacturer, model, serial_number,
-    installation_date, requalification_frequency, requalification_tolerance, notes } = body;
+  const {
+    name, type, department, location,
+    manufacturer, model, serial_number, installation_date,
+    requalification_frequency, requalification_tolerance, notes,
+    // New fields
+    change_control_number, urs_number, urs_approval_date, capacity,
+    // URS PDF attachment (optional, base64)
+    urs_attachment,
+  } = body;
 
-  if (!equipment_id || !name || !type || !department || !location)
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  if (!name || !type || !department || !location)
+    return NextResponse.json({ error: "Name, Type, Department, and Location are required." }, { status: 400 });
 
   const result = await db.execute({
-    sql: `INSERT INTO equipment (equipment_id, name, type, department, location, manufacturer, model,
-          serial_number, installation_date, requalification_frequency, requalification_tolerance, notes, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Started')`,
-    args: [equipment_id, name, type, department, location, manufacturer || null, model || null,
-      serial_number || null, installation_date || null,
-      requalification_frequency || "Annual", requalification_tolerance || "1", notes || null],
+    sql: `INSERT INTO equipment (name, type, department, location, manufacturer, model,
+          serial_number, installation_date, requalification_frequency, requalification_tolerance,
+          notes, status, change_control_number, urs_number, urs_approval_date, capacity)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Started', ?, ?, ?, ?)`,
+    args: [
+      name, type, department, location,
+      manufacturer || null, model || null, serial_number || null,
+      installation_date || null,
+      requalification_frequency || "Annual", requalification_tolerance || "1",
+      notes || null,
+      change_control_number || null, urs_number || null,
+      urs_approval_date || null, capacity || null,
+    ],
   });
 
   const newId = Number(result.lastInsertRowid);
+
+  // Create all qualification phases
   for (const phase of ALL_PHASES) {
     await db.execute({
       sql: `INSERT INTO qualifications (equipment_id, phase, status) VALUES (?, ?, 'Pending')`,
@@ -50,9 +66,30 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // If a URS PDF was uploaded, attach it to the URS qualification phase
+  if (urs_attachment?.file_data) {
+    const ursQual = await db.execute({
+      sql: `SELECT id FROM qualifications WHERE equipment_id = ? AND phase = 'URS'`,
+      args: [newId],
+    });
+    if (ursQual.rows.length) {
+      await db.execute({
+        sql: `INSERT INTO attachments (qualification_id, file_name, file_size, file_type, file_data)
+              VALUES (?, ?, ?, ?, ?)`,
+        args: [
+          Number(ursQual.rows[0].id),
+          urs_attachment.file_name,
+          urs_attachment.file_size || 0,
+          urs_attachment.file_type || "application/pdf",
+          urs_attachment.file_data,
+        ],
+      });
+    }
+  }
+
   await db.execute({
     sql: `INSERT INTO audit_log (equipment_id, action, details) VALUES (?, 'Equipment Created', ?)`,
-    args: [newId, `Equipment ${name} (${equipment_id}) added to system`],
+    args: [newId, `Equipment "${name}" added. CC: ${change_control_number || "—"}, URS: ${urs_number || "—"}`],
   });
 
   return NextResponse.json({ id: newId }, { status: 201 });

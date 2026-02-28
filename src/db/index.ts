@@ -11,7 +11,7 @@ export async function initDB() {
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS equipment (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      equipment_id TEXT NOT NULL UNIQUE,
+      equipment_id TEXT UNIQUE,
       name TEXT NOT NULL,
       type TEXT NOT NULL,
       department TEXT NOT NULL,
@@ -70,6 +70,10 @@ export async function initDB() {
   const migrations = [
     `ALTER TABLE equipment ADD COLUMN requalification_tolerance TEXT DEFAULT '1'`,
     `ALTER TABLE qualifications ADD COLUMN approved_by TEXT`,
+    `ALTER TABLE equipment ADD COLUMN change_control_number TEXT`,
+    `ALTER TABLE equipment ADD COLUMN urs_number TEXT`,
+    `ALTER TABLE equipment ADD COLUMN urs_approval_date TEXT`,
+    `ALTER TABLE equipment ADD COLUMN capacity TEXT`,
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column exists */ }

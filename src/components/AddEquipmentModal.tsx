@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useState, useRef } from "react";
+import { X, Upload, FileText, XCircle } from "lucide-react";
 
 type Props = { onClose: () => void; onSuccess: () => void; };
 
@@ -17,30 +17,66 @@ const TOLERANCE_OPTIONS = [
   { value: "3", label: "± 3 Months" },
 ];
 
+type UrsFile = { file_name: string; file_size: number; file_type: string; file_data: string; };
+
 export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ursFile, setUrsFile] = useState<UrsFile | null>(null);
+  const [ursFileError, setUrsFileError] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState({
-    equipment_id: "", name: "", type: "Manufacturing", department: "API Manufacturing",
-    location: "", manufacturer: "", model: "", serial_number: "",
-    installation_date: "", requalification_frequency: "Annual",
-    requalification_tolerance: "1", notes: "",
+    // Change Control & URS
+    change_control_number: "",
+    urs_number: "",
+    urs_approval_date: "",
+    // Identification
+    name: "",
+    type: "Manufacturing",
+    department: "API Manufacturing",
+    location: "",
+    capacity: "",
+    // Technical
+    manufacturer: "",
+    model: "",
+    serial_number: "",
+    installation_date: "",
+    // Requalification
+    requalification_frequency: "Annual",
+    requalification_tolerance: "1",
+    notes: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+  const set = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleUrsFile = (file: File) => {
+    setUrsFileError("");
+    if (file.size > 5 * 1024 * 1024) { setUrsFileError("File too large — max 5 MB."); return; }
+    if (file.type !== "application/pdf") { setUrsFileError("Only PDF files are accepted for the URS document."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      setUrsFile({ file_name: file.name, file_size: file.size, file_type: file.type, file_data: base64 });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.equipment_id || !form.name || !form.location) {
-      setError("Equipment ID, Name, and Location are required.");
+    if (!form.name || !form.location) {
+      setError("Equipment Name and Location are required.");
       return;
     }
     setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/equipment", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, urs_attachment: ursFile }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to add equipment"); }
       onSuccess();
@@ -73,53 +109,115 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-130px)]">
-          <div className="px-6 py-5 space-y-5">
+          <div className="px-6 py-5 space-y-6">
 
-            {/* Identification */}
-            <div>
-              <h3 style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">Identification</h3>
+            {/* ── Change Control & URS ── */}
+            <section>
+              <SectionHeader label="Change Control & URS Reference" />
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Equipment ID *" name="equipment_id" value={form.equipment_id} onChange={handleChange} placeholder="e.g. HPLC-001" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-                <Field label="Equipment Name *" name="name" value={form.name} onChange={handleChange} placeholder="e.g. HPLC System" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <Field label="Change Control Number" name="change_control_number" value={form.change_control_number}
+                  onChange={set} placeholder="e.g. CC-2024-001" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <Field label="URS Reference Number" name="urs_number" value={form.urs_number}
+                  onChange={set} placeholder="e.g. URS-HPLC-001" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
-                <SelectField label="Equipment Type" name="type" value={form.type} onChange={handleChange} options={EQUIPMENT_TYPES.map(o => ({ value: o, label: o }))} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-                <SelectField label="Department" name="department" value={form.department} onChange={handleChange} options={DEPARTMENTS.map(o => ({ value: o, label: o }))} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <Field label="URS Approval Date" name="urs_approval_date" type="date" value={form.urs_approval_date}
+                  onChange={set} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <div>
+                  <label style={labelStyle} className="block text-xs font-medium mb-1.5">URS Document (PDF)</label>
+                  {ursFile ? (
+                    <div style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border)" }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg">
+                      <FileText size={14} style={{ color: "var(--text-muted)" }} className="flex-shrink-0" />
+                      <span style={{ color: "var(--text-primary)" }} className="text-xs font-medium flex-1 truncate">{ursFile.file_name}</span>
+                      <button type="button" onClick={() => setUrsFile(null)}
+                        style={{ color: "var(--badge-over-text)" }}
+                        className="hover:opacity-70 transition-opacity flex-shrink-0">
+                        <XCircle size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleUrsFile(f); }}
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        border: `1.5px dashed ${dragOver ? "var(--focus-ring)" : "var(--border)"}`,
+                        background: dragOver ? "var(--bg-hover)" : "transparent",
+                        color: "var(--text-muted)",
+                      }}
+                      className="rounded-lg py-2.5 flex items-center justify-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                      <Upload size={13} />
+                      <span className="text-xs">Attach PDF</span>
+                    </div>
+                  )}
+                  <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden"
+                    onChange={(e) => { if (e.target.files?.[0]) handleUrsFile(e.target.files[0]); }} />
+                  {ursFileError && <p style={{ color: "var(--badge-over-text)" }} className="text-xs mt-1">{ursFileError}</p>}
+                </div>
               </div>
-              <div className="mt-4">
-                <Field label="Location *" name="location" value={form.location} onChange={handleChange} placeholder="e.g. Lab A, Room 101" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-              </div>
-            </div>
+            </section>
 
-            {/* Equipment Details */}
-            <div>
-              <h3 style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">Equipment Details</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Manufacturer" name="manufacturer" value={form.manufacturer} onChange={handleChange} placeholder="e.g. Agilent" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-                <Field label="Model" name="model" value={form.model} onChange={handleChange} placeholder="e.g. 1260 Infinity" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-                <Field label="Serial Number" name="serial_number" value={form.serial_number} onChange={handleChange} placeholder="e.g. SN-12345" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-              </div>
-              <div className="mt-4">
-                <Field label="Installation Date" name="installation_date" type="date" value={form.installation_date} onChange={handleChange} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-              </div>
-            </div>
-
-            {/* Requalification Schedule */}
-            <div>
-              <h3 style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">Requalification Schedule</h3>
+            {/* ── Equipment Identification ── */}
+            <section>
+              <SectionHeader label="Equipment Identification" />
               <div className="grid grid-cols-2 gap-4">
-                <SelectField label="Requalification Frequency" name="requalification_frequency" value={form.requalification_frequency} onChange={handleChange} options={FREQ_OPTIONS} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-                <SelectField label="Tolerance Window" name="requalification_tolerance" value={form.requalification_tolerance} onChange={handleChange} options={TOLERANCE_OPTIONS} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <Field label="Equipment Name *" name="name" value={form.name}
+                  onChange={set} placeholder="e.g. HPLC System" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <Field label="Capacity" name="capacity" value={form.capacity}
+                  onChange={set} placeholder="e.g. 500L, 0–300°C, 10 kg" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <SelectField label="Equipment Type" name="type" value={form.type} onChange={set}
+                  options={EQUIPMENT_TYPES.map(o => ({ value: o, label: o }))} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <SelectField label="Department" name="department" value={form.department} onChange={set}
+                  options={DEPARTMENTS.map(o => ({ value: o, label: o }))} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+              </div>
+              <div className="mt-4">
+                <Field label="Location *" name="location" value={form.location}
+                  onChange={set} placeholder="e.g. Lab A, Room 101" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+              </div>
+              <p style={{ color: "var(--text-subtle)" }} className="text-xs mt-2">
+                Equipment ID (tag number) can be assigned later once procurement is complete.
+              </p>
+            </section>
+
+            {/* ── Technical Details ── */}
+            <section>
+              <SectionHeader label="Technical Details" />
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="Manufacturer" name="manufacturer" value={form.manufacturer}
+                  onChange={set} placeholder="e.g. Agilent" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <Field label="Model" name="model" value={form.model}
+                  onChange={set} placeholder="e.g. 1260 Infinity" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <Field label="Serial Number" name="serial_number" value={form.serial_number}
+                  onChange={set} placeholder="e.g. SN-12345" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+              </div>
+              <div className="mt-4">
+                <Field label="Installation Date" name="installation_date" type="date" value={form.installation_date}
+                  onChange={set} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+              </div>
+            </section>
+
+            {/* ── Requalification Schedule ── */}
+            <section>
+              <SectionHeader label="Requalification Schedule" />
+              <div className="grid grid-cols-2 gap-4">
+                <SelectField label="Requalification Frequency" name="requalification_frequency" value={form.requalification_frequency}
+                  onChange={set} options={FREQ_OPTIONS} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+                <SelectField label="Tolerance Window" name="requalification_tolerance" value={form.requalification_tolerance}
+                  onChange={set} options={TOLERANCE_OPTIONS} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
               </div>
               <p style={{ color: "var(--text-muted)" }} className="text-xs mt-2">
                 Requalification must be completed within the tolerance window before or after the due date.
               </p>
-            </div>
+            </section>
 
             {/* Notes */}
             <div>
               <label style={labelStyle} className="block text-xs font-medium mb-1.5">Notes</label>
-              <textarea name="notes" value={form.notes} onChange={handleChange} rows={2}
+              <textarea name="notes" value={form.notes} onChange={set} rows={2}
                 placeholder="Any additional remarks..."
                 style={inputStyle} className={`${inputCls} resize-none`} />
             </div>
@@ -145,6 +243,10 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
       </div>
     </div>
   );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">{label}</p>;
 }
 
 type FieldProps = { label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; type?: string; inputStyle: React.CSSProperties; labelStyle: React.CSSProperties; inputCls: string; };
