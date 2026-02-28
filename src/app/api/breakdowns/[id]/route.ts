@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, ensureDB } from "@/db";
+import { db } from "@/db";
 
-
-// GET: fetch all breakdowns for an equipment
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
     const { id } = await params;
-
     const breakdowns = await db.execute({
       sql: `SELECT * FROM breakdowns WHERE equipment_id = ? ORDER BY reported_date DESC, created_at DESC`,
       args: [id],
     });
-
-    // For each breakdown, fetch its revalidation phases
     const result = [];
     for (const bd of breakdowns.rows) {
       const phases = await db.execute({
@@ -22,41 +16,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       });
       result.push({ ...bd, revalidation_phases: phases.rows });
     }
-
     return NextResponse.json(result);
   } catch (err) {
-    console.error("[GET]", err);
+    console.error("[GET /api/breakdowns/[id]]", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
 
-// PUT: update a breakdown (maintenance details, status, revalidation phases)
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
     const { id } = await params;
     const body = await req.json();
-
-    const {
-      root_cause, breakdown_type, severity, maintenance_start, maintenance_end,
+    const { root_cause, breakdown_type, severity, maintenance_start, maintenance_end,
       maintenance_performed_by, maintenance_details, validation_impact, impact_assessment,
-      status, closure_date, closed_by, closure_remarks, equipment_id, revalidation_phases
-    } = body;
+      status, closure_date, closed_by, closure_remarks, equipment_id, revalidation_phases } = body;
 
     await db.execute({
-      sql: `UPDATE breakdowns SET
-            root_cause=?, breakdown_type=?, severity=?, maintenance_start=?, maintenance_end=?,
-            maintenance_performed_by=?, maintenance_details=?, validation_impact=?, impact_assessment=?,
-            status=?, closure_date=?, closed_by=?, closure_remarks=?, updated_at=datetime('now')
-            WHERE id=?`,
+      sql: `UPDATE breakdowns SET root_cause=?, breakdown_type=?, severity=?, maintenance_start=?,
+            maintenance_end=?, maintenance_performed_by=?, maintenance_details=?, validation_impact=?,
+            impact_assessment=?, status=?, closure_date=?, closed_by=?, closure_remarks=?,
+            updated_at=datetime('now') WHERE id=?`,
       args: [root_cause || null, breakdown_type, severity, maintenance_start || null,
         maintenance_end || null, maintenance_performed_by || null, maintenance_details || null,
         validation_impact, impact_assessment || null, status,
         closure_date || null, closed_by || null, closure_remarks || null, id],
     });
 
-    // Update revalidation phases
-    if (revalidation_phases && Array.isArray(revalidation_phases)) {
+    if (Array.isArray(revalidation_phases)) {
       for (const rp of revalidation_phases) {
         if (rp.id) {
           await db.execute({
@@ -69,22 +55,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    // Update equipment status based on breakdown status
     if (equipment_id) {
-      // Check if any open breakdowns remain
       const openBreakdowns = await db.execute({
         sql: `SELECT COUNT(*) as cnt FROM breakdowns WHERE equipment_id = ? AND status NOT IN ('Closed', 'Cancelled')`,
         args: [equipment_id],
       });
       const openCount = Number(openBreakdowns.rows[0].cnt);
       if (openCount === 0) {
-        // No open breakdowns — check if revalidation was required
-        const hadRevalidation = await db.execute({
+        const pending = await db.execute({
           sql: `SELECT COUNT(*) as cnt FROM revalidation_phases rp JOIN breakdowns b ON rp.breakdown_id = b.id WHERE b.equipment_id = ? AND b.status = 'Closed' AND rp.status != 'Passed'`,
           args: [equipment_id],
         });
-        const pendingRevalidation = Number(hadRevalidation.rows[0].cnt);
-        if (pendingRevalidation === 0) {
+        if (Number(pending.rows[0].cnt) === 0) {
           await db.execute({
             sql: `UPDATE equipment SET status = 'Qualified', updated_at = datetime('now') WHERE id = ? AND status = 'Under Maintenance'`,
             args: [equipment_id],
@@ -101,29 +83,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           args: [equipment_id],
         });
       }
-
       await db.execute({
         sql: `INSERT INTO audit_log (equipment_id, action, details) VALUES (?, 'Breakdown Updated', ?)`,
-        args: [equipment_id, `Breakdown #${id} status set to ${status}`],
+        args: [equipment_id, `Breakdown #${id} status: ${status}`],
       });
     }
 
     return NextResponse.json({ message: "Updated" });
   } catch (err) {
-    console.error("[PUT]", err);
+    console.error("[PUT /api/breakdowns/[id]]", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
     const { id } = await params;
     await db.execute({ sql: `DELETE FROM revalidation_phases WHERE breakdown_id = ?`, args: [id] });
     await db.execute({ sql: `DELETE FROM breakdowns WHERE id = ?`, args: [id] });
     return NextResponse.json({ message: "Deleted" });
   } catch (err) {
-    console.error("[DELETE]", err);
+    console.error("[DELETE /api/breakdowns/[id]]", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
