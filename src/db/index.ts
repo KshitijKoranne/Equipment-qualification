@@ -5,7 +5,7 @@ export const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-export const ALL_PHASES = ["URS", "DQ", "FAT", "SAT", "IQ", "OQ", "PQ", "Requalification"];
+export const ALL_PHASES = ["URS", "DQ", "FAT", "SAT", "IQ", "OQ", "PQ"];
 
 export async function initDB() {
   await db.executeMultiple(`
@@ -81,6 +81,30 @@ export async function initDB() {
 
   // Init breakdown tables
   await initBreakdownTables();
+
+  // Requalifications table
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS requalifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      equipment_id INTEGER NOT NULL,
+      requalification_ref TEXT NOT NULL,
+      frequency TEXT NOT NULL DEFAULT 'Annual',
+      tolerance_months TEXT NOT NULL DEFAULT '1',
+      scheduled_date TEXT,
+      execution_date TEXT,
+      protocol_number TEXT,
+      approval_date TEXT,
+      approved_by TEXT,
+      status TEXT NOT NULL DEFAULT 'Scheduled',
+      remarks TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (equipment_id) REFERENCES equipment(id)
+    )
+  `);
+
+  // Add requalification_id FK to attachments for requalification-linked files
+  try { await db.execute(`ALTER TABLE attachments ADD COLUMN requalification_id INTEGER`); } catch { /* exists */ }
 
   // Add new phases to existing equipment that only have 4 phases
   const equipList = await db.execute(`SELECT id FROM equipment`);

@@ -24,7 +24,16 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function AttachmentPanel({ qualificationId }: { qualificationId: number }) {
+export default function AttachmentPanel({
+  qualificationId,
+  requalificationId,
+}: {
+  qualificationId?: number;
+  requalificationId?: number;
+}) {
+  const id = requalificationId ?? qualificationId;
+  const type = requalificationId ? "requalification" : "qualification";
+
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -34,49 +43,35 @@ export default function AttachmentPanel({ qualificationId }: { qualificationId: 
 
   const fetchAttachments = async () => {
     try {
-      const res = await fetch(`/api/attachments/${qualificationId}`);
+      const res = await fetch(`/api/attachments/${id}?type=${type}`);
       setAttachments(await res.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchAttachments(); }, [qualificationId]);
+  useEffect(() => { fetchAttachments(); }, [id]);
 
   const uploadFile = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      setError("File too large. Max size is 5 MB.");
-      return;
-    }
-    setUploading(true);
-    setError("");
+    if (file.size > 5 * 1024 * 1024) { setError("File too large. Max size is 5 MB."); return; }
+    setUploading(true); setError("");
     try {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64 = (reader.result as string).split(",")[1];
+        const body = requalificationId
+          ? { requalification_id: requalificationId, file_name: file.name, file_size: file.size, file_type: file.type, file_data: base64 }
+          : { qualification_id: qualificationId, file_name: file.name, file_size: file.size, file_type: file.type, file_data: base64 };
         const res = await fetch("/api/attachments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            qualification_id: qualificationId,
-            file_name: file.name,
-            file_size: file.size,
-            file_type: file.type,
-            file_data: base64,
-          }),
+          body: JSON.stringify(body),
         });
-        if (!res.ok) {
-          const d = await res.json();
-          setError(d.error || "Upload failed");
-        } else {
-          await fetchAttachments();
-        }
+        if (!res.ok) { const d = await res.json(); setError(d.error || "Upload failed"); }
+        else { await fetchAttachments(); }
         setUploading(false);
       };
       reader.readAsDataURL(file);
-    } catch {
-      setError("Upload failed");
-      setUploading(false);
-    }
+    } catch { setError("Upload failed"); setUploading(false); }
   };
 
   const handleFiles = (files: FileList | null) => {

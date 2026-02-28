@@ -10,8 +10,12 @@ async function ensureDB() {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await ensureDB();
   const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const type = searchParams.get("type") || "qualification";
+
+  const col = type === "requalification" ? "requalification_id" : "qualification_id";
   const result = await db.execute({
-    sql: `SELECT id, qualification_id, file_name, file_size, file_type, uploaded_at FROM attachments WHERE qualification_id = ? ORDER BY uploaded_at DESC`,
+    sql: `SELECT id, qualification_id, requalification_id, file_name, file_size, file_type, uploaded_at FROM attachments WHERE ${col} = ? ORDER BY uploaded_at DESC`,
     args: [id],
   });
   return NextResponse.json(result.rows);

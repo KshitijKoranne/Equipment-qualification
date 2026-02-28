@@ -6,16 +6,6 @@ type Props = { onClose: () => void; onSuccess: () => void; };
 
 const EQUIPMENT_TYPES = ["Manufacturing", "Laboratory", "Utility", "QC", "Packaging", "Storage"];
 const DEPARTMENTS = ["API Manufacturing", "Quality Control", "Formulation", "Packaging", "Warehouse", "Utilities", "R&D"];
-const FREQ_OPTIONS = [
-  { value: "Annual",        label: "Annual (Every 1 Year)" },
-  { value: "Every 2 Years", label: "Every 2 Years" },
-  { value: "Every 5 Years", label: "Every 5 Years" },
-];
-const TOLERANCE_OPTIONS = [
-  { value: "1", label: "± 1 Month" },
-  { value: "2", label: "± 2 Months" },
-  { value: "3", label: "± 3 Months" },
-];
 
 type UrsFile = { file_name: string; file_size: number; file_type: string; file_data: string; };
 
@@ -43,9 +33,7 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
     model: "",
     serial_number: "",
     installation_date: "",
-    // Requalification
-    requalification_frequency: "Annual",
-    requalification_tolerance: "1",
+    // Requalification intentionally excluded — set during OQ phase editing
     notes: "",
   });
 
@@ -198,20 +186,6 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
                 <Field label="Installation Date" name="installation_date" type="date" value={form.installation_date}
                   onChange={set} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
               </div>
-            </section>
-
-            {/* ── Requalification Schedule ── */}
-            <section>
-              <SectionHeader label="Requalification Schedule" />
-              <div className="grid grid-cols-2 gap-4">
-                <SelectField label="Requalification Frequency" name="requalification_frequency" value={form.requalification_frequency}
-                  onChange={set} options={FREQ_OPTIONS} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-                <SelectField label="Tolerance Window" name="requalification_tolerance" value={form.requalification_tolerance}
-                  onChange={set} options={TOLERANCE_OPTIONS} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-              </div>
-              <p style={{ color: "var(--text-muted)" }} className="text-xs mt-2">
-                Requalification must be completed within the tolerance window before or after the due date.
-              </p>
             </section>
 
             {/* Notes */}
