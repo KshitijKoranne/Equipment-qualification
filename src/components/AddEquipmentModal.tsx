@@ -22,6 +22,9 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
     change_control_number: "",
     urs_number: "",
     urs_approval_date: "",
+    urs_execution_date: "",
+    urs_approved_by: "",
+    urs_remarks: "",
     // Identification
     name: "",
     type: "Manufacturing",
@@ -108,12 +111,18 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Change Control Number" name="change_control_number" value={form.change_control_number}
                   onChange={set} placeholder="e.g. CC-2024-001" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
-                <Field label="URS Reference Number" name="urs_number" value={form.urs_number}
+                <Field label="URS Reference Number *" name="urs_number" value={form.urs_number}
                   onChange={set} placeholder="e.g. URS-HPLC-001" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
+                <Field label="URS Execution Date" name="urs_execution_date" type="date" value={form.urs_execution_date}
+                  onChange={set} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
                 <Field label="URS Approval Date" name="urs_approval_date" type="date" value={form.urs_approval_date}
                   onChange={set} inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <Field label="Approved By" name="urs_approved_by" value={form.urs_approved_by}
+                  onChange={set} placeholder="Name / designation" inputStyle={inputStyle} labelStyle={labelStyle} inputCls={inputCls} />
                 <div>
                   <label style={labelStyle} className="block text-xs font-medium mb-1.5">URS Document (PDF)</label>
                   {ursFile ? (
@@ -147,6 +156,12 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
                     onChange={(e) => { if (e.target.files?.[0]) handleUrsFile(e.target.files[0]); }} />
                   {ursFileError && <p style={{ color: "var(--badge-over-text)" }} className="text-xs mt-1">{ursFileError}</p>}
                 </div>
+              </div>
+              <div className="mt-4">
+                <label style={labelStyle} className="block text-xs font-medium mb-1.5">URS Remarks</label>
+                <textarea name="urs_remarks" value={form.urs_remarks} onChange={set} rows={2}
+                  placeholder="Scope, key requirements, deviations noted in URS..."
+                  style={inputStyle} className={`${inputCls} resize-none`} />
               </div>
             </section>
 

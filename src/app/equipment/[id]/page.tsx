@@ -163,8 +163,8 @@ export default function EquipmentDetail() {
     finally { setPhaseSaving(false); }
   };
 
-  // A phase counts as "done" when Passed, Waived, or Not Applicable
-  const isDone = (status: string) => ["Passed", "Waived", "Not Applicable"].includes(status);
+  // A phase is "done" (unlocks next) when it has any status other than Pending
+  const isDone = (status: string) => status !== "Pending";
 
   const handleDelete = async () => {    await fetch(`/api/equipment/${id}`, { method: "DELETE" });
     router.push("/");

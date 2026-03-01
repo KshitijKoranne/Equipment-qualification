@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
     await ensureReady();
     const body = await req.json();
     const { name, type, department, location, manufacturer, model, serial_number,
-      notes, change_control_number, urs_number, urs_approval_date, capacity, urs_attachment } = body;
+      notes, change_control_number, urs_number, urs_approval_date,
+      urs_execution_date, urs_approved_by, urs_remarks,
+      capacity, urs_attachment } = body;
 
     if (!name || !type || !department || !location)
       return NextResponse.json({ error: "Name, Type, Department and Location are required." }, { status: 400 });
@@ -53,10 +55,11 @@ export async function POST(req: NextRequest) {
 
     for (const phase of ALL_PHASES) {
       if (phase === "URS") {
-        // URS is already prepared before equipment is added — mark as Passed
+        // URS is already prepared before equipment is added — mark as Passed with all details
         await db.execute({
-          sql: `INSERT INTO qualifications (equipment_id, phase, protocol_number, approval_date, status) VALUES (?, 'URS', ?, ?, 'Passed')`,
-          args: [newId, urs_number || null, urs_approval_date || null],
+          sql: `INSERT INTO qualifications (equipment_id, phase, protocol_number, execution_date, approval_date, approved_by, remarks, status)
+                VALUES (?, 'URS', ?, ?, ?, ?, ?, 'Passed')`,
+          args: [newId, urs_number || null, urs_execution_date || null, urs_approval_date || null, urs_approved_by || null, urs_remarks || null],
         });
       } else {
         await db.execute({
