@@ -52,10 +52,18 @@ export async function POST(req: NextRequest) {
     const newId = Number(result.lastInsertRowid);
 
     for (const phase of ALL_PHASES) {
-      await db.execute({
-        sql: `INSERT INTO qualifications (equipment_id, phase, status) VALUES (?, ?, 'Pending')`,
-        args: [newId, phase],
-      });
+      if (phase === "URS") {
+        // Prefill URS phase with the URS number and approval date provided at creation
+        await db.execute({
+          sql: `INSERT INTO qualifications (equipment_id, phase, protocol_number, approval_date, status) VALUES (?, 'URS', ?, ?, 'Pending')`,
+          args: [newId, urs_number || null, urs_approval_date || null],
+        });
+      } else {
+        await db.execute({
+          sql: `INSERT INTO qualifications (equipment_id, phase, status) VALUES (?, ?, 'Pending')`,
+          args: [newId, phase],
+        });
+      }
     }
 
     if (urs_attachment?.file_data) {
