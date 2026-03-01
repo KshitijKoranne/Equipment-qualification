@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, ensureDB } from "@/db";
+import { db, initDB } from "@/db";
+
+let dbReady = false;
+async function ensureReady() {
+  if (!dbReady) { await initDB(); dbReady = true; }
+}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
+    await ensureReady();
     const { id } = await params;
     const result = await db.execute({ sql: `SELECT * FROM attachments WHERE id = ?`, args: [id] });
     if (!result.rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });

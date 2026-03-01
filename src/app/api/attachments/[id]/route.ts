@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, ensureDB } from "@/db";
+import { db, initDB } from "@/db";
+
+let dbReady = false;
+async function ensureReady() {
+  if (!dbReady) { await initDB(); dbReady = true; }
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
+    await ensureReady();
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "qualification";
@@ -21,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
+    await ensureReady();
     const { id } = await params;
     await db.execute({ sql: `DELETE FROM attachments WHERE id = ?`, args: [id] });
     return NextResponse.json({ message: "Deleted" });

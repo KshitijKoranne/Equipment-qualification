@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, ensureDB, ALL_PHASES } from "@/db";
+import { db, ALL_PHASES, initDB } from "@/db";
+
+let dbReady = false;
+async function ensureReady() {
+  if (!dbReady) {
+    await initDB();
+    dbReady = true;
+  }
+}
 
 export async function GET() {
   try {
-    await ensureDB();
+    await ensureReady();
     const result = await db.execute(`
       SELECT e.*,
         (SELECT q.status FROM qualifications q WHERE q.equipment_id = e.id AND q.phase = 'URS' ORDER BY q.id DESC LIMIT 1) as urs_status,
@@ -24,7 +32,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureDB();
+    await ensureReady();
     const body = await req.json();
     const { name, type, department, location, manufacturer, model, serial_number,
       notes, change_control_number, urs_number, urs_approval_date, capacity, urs_attachment } = body;

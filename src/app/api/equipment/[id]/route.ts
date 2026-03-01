@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, ensureDB } from "@/db";
+import { db, initDB } from "@/db";
+let dbReady = false;
+async function ensureReady() {
+  if (!dbReady) { await initDB(); dbReady = true; }
+}
+
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
-    const { id } = await params;
+const { id } = await params;
     const equipment = await db.execute({ sql: `SELECT * FROM equipment WHERE id = ?`, args: [id] });
     if (!equipment.rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -47,8 +51,7 @@ async function generateEquipmentId(): Promise<string> {
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
-    const { id } = await params;
+const { id } = await params;
     const body = await req.json();
     const { name, type, department, location, manufacturer, model, serial_number, installation_date,
       requalification_frequency, requalification_tolerance, next_due_date, notes, status, qualifications,
@@ -118,8 +121,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureDB();
-    const { id } = await params;
+const { id } = await params;
     const bds = await db.execute({ sql: `SELECT id FROM breakdowns WHERE equipment_id = ?`, args: [id] });
     for (const bd of bds.rows) {
       await db.execute({ sql: `DELETE FROM revalidation_phases WHERE breakdown_id = ?`, args: [bd.id as number] });

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, ensureDB } from "@/db";
+import { db, initDB } from "@/db";
+
+let dbReady = false;
+async function ensureReady() {
+  if (!dbReady) { await initDB(); dbReady = true; }
+}
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureDB();
+    await ensureReady();
     const { qualification_id, requalification_id, file_name, file_size, file_type, file_data } = await req.json();
     if (!file_name || !file_data || (!qualification_id && !requalification_id))
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
