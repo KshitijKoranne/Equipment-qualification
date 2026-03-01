@@ -53,9 +53,9 @@ export async function POST(req: NextRequest) {
 
     for (const phase of ALL_PHASES) {
       if (phase === "URS") {
-        // Prefill URS phase with the URS number and approval date provided at creation
+        // URS is already prepared before equipment is added — mark as Passed
         await db.execute({
-          sql: `INSERT INTO qualifications (equipment_id, phase, protocol_number, approval_date, status) VALUES (?, 'URS', ?, ?, 'Pending')`,
+          sql: `INSERT INTO qualifications (equipment_id, phase, protocol_number, approval_date, status) VALUES (?, 'URS', ?, ?, 'Passed')`,
           args: [newId, urs_number || null, urs_approval_date || null],
         });
       } else {

@@ -117,6 +117,9 @@ export default function EquipmentDetail() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const [newlyAssignedId, setNewlyAssignedId] = useState<string | null>(null);
+  const [editingPhase, setEditingPhase] = useState<number | null>(null); // qual.id being edited
+  const [phaseEditForm, setPhaseEditForm] = useState<Partial<Qualification>>({});
+  const [phaseSaving, setPhaseSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -138,8 +141,32 @@ export default function EquipmentDetail() {
     finally { setSaving(false); }
   };
 
-  const handleDelete = async () => {
-    await fetch(`/api/equipment/${id}`, { method: "DELETE" });
+  // Save a single qualification phase individually
+  const savePhase = async (qualId: number) => {
+    setPhaseSaving(true);
+    try {
+      const updatedQual = { ...qualifications.find(q => q.id === qualId), ...phaseEditForm };
+      const res = await fetch(`/api/equipment/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editForm, qualifications: [updatedQual] }),
+      });
+      const data = await res.json();
+      if (data.equipment_id && (!equipment?.equipment_id || equipment.equipment_id.startsWith("PENDING-"))) {
+        setNewlyAssignedId(data.equipment_id);
+        setTimeout(() => setNewlyAssignedId(null), 8000);
+      }
+      setEditingPhase(null);
+      setPhaseEditForm({});
+      fetchData();
+    } catch (e) { console.error(e); }
+    finally { setPhaseSaving(false); }
+  };
+
+  // A phase counts as "done" when Passed, Waived, or Not Applicable
+  const isDone = (status: string) => ["Passed", "Waived", "Not Applicable"].includes(status);
+
+  const handleDelete = async () => {    await fetch(`/api/equipment/${id}`, { method: "DELETE" });
     router.push("/");
   };
 
@@ -197,7 +224,7 @@ export default function EquipmentDetail() {
               <StatusIcon size={13} /> {equipment.status}
             </span>
             <ThemeToggle />
-            {editing ? (
+            {activeTab !== "qualification" && (editing ? (
               <>
                 <button onClick={() => { setEditing(false); setEditForm(equipment); setEditQuals(qualifications); }}
                   style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
@@ -211,19 +238,17 @@ export default function EquipmentDetail() {
                 </button>
               </>
             ) : (
-              <>
-                <button onClick={() => setEditing(true)}
-                  style={{ color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg hover:opacity-80 transition-opacity">
-                  <Edit2 size={14} /> Edit
-                </button>
-                <button onClick={() => setShowDeleteConfirm(true)}
-                  style={{ color: "var(--badge-over-text)", border: "1px solid var(--badge-over-border)", background: "var(--badge-over-bg)" }}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg hover:opacity-80 transition-opacity">
-                  <Trash2 size={14} />
-                </button>
-              </>
-            )}
+              <button onClick={() => setEditing(true)}
+                style={{ color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg hover:opacity-80 transition-opacity">
+                <Edit2 size={14} /> Edit
+              </button>
+            ))}
+            <button onClick={() => setShowDeleteConfirm(true)}
+              style={{ color: "var(--badge-over-text)", border: "1px solid var(--badge-over-border)", background: "var(--badge-over-bg)" }}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg hover:opacity-80 transition-opacity">
+              <Trash2 size={14} />
+            </button>
           </div>
         </div>
       </header>
@@ -288,29 +313,66 @@ export default function EquipmentDetail() {
 
             {/* Phase cards — 2 columns */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {displayQuals.map((qual) => {
+              {displayQuals.map((qual, phaseIdx) => {
                 const info = PHASE_INFO[qual.phase];
                 const qb = QUAL_BADGE[qual.status] || QUAL_BADGE["Pending"];
+                const prevQual = phaseIdx > 0 ? displayQuals[phaseIdx - 1] : null;
+                const isLocked = prevQual !== null && !isDone(prevQual.status);
+                const isEditingThis = editingPhase === qual.id;
+                const ef = isEditingThis ? phaseEditForm : {};
+                const fieldVal = (field: string) => (ef as Record<string,string>)[field] ?? (qual as unknown as Record<string,string>)[field] ?? "";
+
                 return (
-                  <div key={qual.id} style={surfaceStyle} className="rounded-xl overflow-hidden">
-                    {/* Phase header */}
-                    <div style={{ borderBottom: "1px solid var(--border-light)" }} className="px-5 py-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span style={{ color: "var(--text-muted)" }} className="text-xs font-bold uppercase tracking-widest">{qual.phase}</span>
-                        <span style={{ background: `var(${qb.bg})`, color: `var(${qb.text})`, borderColor: `var(${qb.border})` }}
-                          className="text-xs px-2 py-0.5 rounded-md border font-medium">{qual.status}</span>
+                  <div key={qual.id} style={{ ...surfaceStyle, opacity: isLocked ? 0.5 : 1, position: "relative" }} className="rounded-xl overflow-hidden">
+
+                    {/* Lock overlay */}
+                    {isLocked && (
+                      <div style={{ position: "absolute", inset: 0, zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg-surface)", opacity: 0.85, borderRadius: 12 }}>
+                        <span style={{ fontSize: 22 }}>🔒</span>
+                        <p style={{ color: "var(--text-muted)" }} className="text-xs mt-2 font-medium">Complete {prevQual?.phase} first</p>
                       </div>
-                      <p style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">{info?.full}</p>
-                      <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5 leading-relaxed">{info?.desc}</p>
+                    )}
+
+                    {/* Phase header */}
+                    <div style={{ borderBottom: "1px solid var(--border-light)" }} className="px-5 py-4 flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span style={{ color: "var(--text-muted)" }} className="text-xs font-bold uppercase tracking-widest">{qual.phase}</span>
+                          <span style={{ background: `var(${qb.bg})`, color: `var(${qb.text})`, borderColor: `var(${qb.border})` }}
+                            className="text-xs px-2 py-0.5 rounded-md border font-medium">{qual.status}</span>
+                        </div>
+                        <p style={{ color: "var(--text-primary)" }} className="text-sm font-semibold">{info?.full}</p>
+                        <p style={{ color: "var(--text-muted)" }} className="text-xs mt-0.5 leading-relaxed">{info?.desc}</p>
+                      </div>
+                      {/* Per-tile edit button */}
+                      {!isLocked && !isEditingThis && (
+                        <button onClick={() => { setEditingPhase(qual.id); setPhaseEditForm({ ...qual }); }}
+                          style={{ color: "var(--text-muted)", border: "1px solid var(--border)", flexShrink: 0 }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:opacity-80 mt-0.5">
+                          <Edit2 size={11} /> Edit
+                        </button>
+                      )}
+                      {isEditingThis && (
+                        <div className="flex gap-1.5 flex-shrink-0 mt-0.5">
+                          <button onClick={() => { setEditingPhase(null); setPhaseEditForm({}); }}
+                            style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                            className="px-2.5 py-1.5 rounded-lg text-xs hover:opacity-80">Cancel</button>
+                          <button onClick={() => savePhase(qual.id)} disabled={phaseSaving}
+                            style={{ background: "var(--text-primary)", color: "var(--bg-surface)" }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50">
+                            <Save size={11} /> {phaseSaving ? "…" : "Save"}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Phase fields */}
                     <div className="px-5 py-4 space-y-3">
-                      {editing ? (
+                      {isEditingThis ? (
                         <>
                           <div>
                             <label style={labelStyle} className="block text-xs font-medium mb-1">Status</label>
-                            <select value={qual.status} onChange={(e) => updateQual(qual.id, "status", e.target.value)} style={inputStyle} className={inputCls}>
+                            <select value={fieldVal("status")} onChange={(e) => setPhaseEditForm(p => ({ ...p, status: e.target.value }))} style={inputStyle} className={inputCls}>
                               {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
                             </select>
                           </div>
@@ -321,8 +383,7 @@ export default function EquipmentDetail() {
                             ].map(({ label, field, placeholder }) => (
                               <div key={field}>
                                 <label style={labelStyle} className="block text-xs font-medium mb-1">{label}</label>
-                                <input value={(qual as unknown as Record<string, string>)[field] || ""}
-                                  onChange={(e) => updateQual(qual.id, field, e.target.value)}
+                                <input value={fieldVal(field)} onChange={(e) => setPhaseEditForm(p => ({ ...p, [field]: e.target.value }))}
                                   style={inputStyle} className={inputCls} placeholder={placeholder} />
                               </div>
                             ))}
@@ -332,15 +393,14 @@ export default function EquipmentDetail() {
                             ].map(({ label, field }) => (
                               <div key={field}>
                                 <label style={labelStyle} className="block text-xs font-medium mb-1">{label}</label>
-                                <input type="date" value={(qual as unknown as Record<string, string>)[field] || ""}
-                                  onChange={(e) => updateQual(qual.id, field, e.target.value)}
+                                <input type="date" value={fieldVal(field)} onChange={(e) => setPhaseEditForm(p => ({ ...p, [field]: e.target.value }))}
                                   style={inputStyle} className={inputCls} />
                               </div>
                             ))}
                           </div>
                           <div>
                             <label style={labelStyle} className="block text-xs font-medium mb-1">Remarks</label>
-                            <textarea value={qual.remarks || ""} onChange={(e) => updateQual(qual.id, "remarks", e.target.value)} rows={2}
+                            <textarea value={fieldVal("remarks")} onChange={(e) => setPhaseEditForm(p => ({ ...p, remarks: e.target.value }))} rows={2}
                               style={inputStyle} className={`${inputCls} resize-none`} placeholder="Observations, deviations..." />
                           </div>
                         </>
@@ -349,7 +409,7 @@ export default function EquipmentDetail() {
                           <Detail label="Protocol No." value={qual.protocol_number} />
                           <Detail label="Approved By"  value={qual.approved_by} />
                           <Detail label="Execution Date" value={qual.execution_date ? new Date(qual.execution_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
-                          <Detail label="Approval Date"  value={qual.approval_date  ? new Date(qual.approval_date ).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
+                          <Detail label="Approval Date"  value={qual.approval_date  ? new Date(qual.approval_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : null} />
                           {qual.remarks && (
                             <div className="col-span-2">
                               <p style={labelStyle} className="text-xs font-medium mb-0.5">Remarks</p>
@@ -363,7 +423,7 @@ export default function EquipmentDetail() {
                     {/* Attachments — always visible */}
                     <AttachmentPanel qualificationId={qual.id} />
 
-                    {/* DQ: Equipment ID assignment hint */}
+                    {/* DQ: Equipment ID hint */}
                     {qual.phase === "DQ" && (!equipment.equipment_id || equipment.equipment_id.startsWith("PENDING-")) && (
                       <div style={{ borderTop: "1px solid var(--border-light)", background: "var(--bg-surface-2)" }} className="px-5 py-3 flex items-center gap-2">
                         <Tag size={13} style={{ color: "var(--text-muted)" }} className="flex-shrink-0" />
@@ -373,11 +433,11 @@ export default function EquipmentDetail() {
                       </div>
                     )}
 
-                    {/* OQ: requalification frequency field */}
+                    {/* OQ: requalification frequency */}
                     {qual.phase === "OQ" && (
                       <div style={{ borderTop: "1px solid var(--border-light)" }} className="px-5 py-4">
                         <p style={{ color: "var(--text-muted)" }} className="text-xs font-semibold uppercase tracking-wider mb-3">Requalification Frequency</p>
-                        {editing ? (
+                        {isEditingThis ? (
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label style={{ color: "var(--text-muted)" }} className="block text-xs font-medium mb-1.5">Frequency</label>
@@ -402,9 +462,7 @@ export default function EquipmentDetail() {
                             <Detail label="Tolerance Window" value={equipment?.requalification_tolerance ? `± ${equipment.requalification_tolerance} Month${equipment.requalification_tolerance === "1" ? "" : "s"}` : "—"} />
                           </div>
                         )}
-                        <p style={{ color: "var(--text-muted)" }} className="text-xs mt-2">
-                          Set during OQ — defines how often this equipment must be requalified.
-                        </p>
+                        <p style={{ color: "var(--text-muted)" }} className="text-xs mt-2">Set during OQ — defines how often this equipment must be requalified.</p>
                       </div>
                     )}
                   </div>
