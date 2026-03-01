@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, initDB } from "@/db";
-let dbReady = false;
-async function ensureReady() {
-  if (!dbReady) { await initDB(); dbReady = true; }
-}
+import { db, ensureDB } from "@/db";
 
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

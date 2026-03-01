@@ -1,11 +1,10 @@
 "use client";
 import { useState, useRef } from "react";
 import { X, Upload, FileText, XCircle } from "lucide-react";
+import { EQUIPMENT_TYPES, DEPARTMENTS } from "@/lib/constants";
+import { INPUT_STYLE, INPUT_CLS, LABEL_STYLE } from "@/lib/utils";
 
 type Props = { onClose: () => void; onSuccess: () => void; };
-
-const EQUIPMENT_TYPES = ["Manufacturing", "Laboratory", "Utility", "QC", "Packaging", "Storage"];
-const DEPARTMENTS = ["API Manufacturing", "Quality Control", "Formulation", "Packaging", "Warehouse", "Utilities", "R&D"];
 
 type UrsFile = { file_name: string; file_size: number; file_type: string; file_data: string; };
 
@@ -79,9 +78,9 @@ export default function AddEquipmentModal({ onClose, onSuccess }: Props) {
     } finally { setLoading(false); }
   };
 
-  const inputStyle = { background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-primary)" };
-  const inputCls = "w-full px-3 py-2 text-sm rounded-lg focus:outline-none";
-  const labelStyle = { color: "var(--text-muted)" };
+  const inputStyle = INPUT_STYLE;
+  const inputCls = INPUT_CLS;
+  const labelStyle = LABEL_STYLE;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

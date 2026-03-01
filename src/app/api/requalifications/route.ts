@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, initDB } from "@/db";
-let dbReady = false;
-async function ensureReady() {
-  if (!dbReady) { await initDB(); dbReady = true; }
-}
+import { db, ensureDB } from "@/db";
 
 
 export async function GET(req: NextRequest) {
   try {
-        await ensureReady();
+        await ensureDB();
 const { searchParams } = new URL(req.url);
     const equipmentId = searchParams.get("equipment_id");
     if (!equipmentId) return NextResponse.json({ error: "equipment_id required" }, { status: 400 });
@@ -25,7 +21,7 @@ const { searchParams } = new URL(req.url);
 
 export async function POST(req: NextRequest) {
   try {
-        await ensureReady();
+        await ensureDB();
 const body = await req.json();
     const { equipment_id, requalification_ref, frequency, tolerance_months, scheduled_date, protocol_number, remarks } = body;
     if (!equipment_id || !requalification_ref)

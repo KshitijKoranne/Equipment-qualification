@@ -1,61 +1,15 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Filter, ChevronDown, Activity, CheckCircle2, AlertTriangle, Clock, XCircle, FlaskConical } from "lucide-react";
+import { Search, Plus, Filter, ChevronDown, FlaskConical } from "lucide-react";
 import AddEquipmentModal from "@/components/AddEquipmentModal";
 import ThemeToggle from "@/components/ThemeToggle";
+import { StatusBadge, PhaseBar } from "@/components/ui";
+import { STATUS_CONFIG } from "@/lib/constants";
+import { formatDate, SURFACE_STYLE, INPUT_STYLE } from "@/lib/utils";
+import type { EquipmentListItem } from "@/lib/types";
 
-type Equipment = {
-  id: number; equipment_id: string; name: string; type: string;
-  department: string; location: string; status: string;
-  next_due_date: string;
-  urs_status: string; dq_status: string; fat_status: string; sat_status: string;
-  iq_status: string; oq_status: string; pq_status: string;
-};
-
-const STATUS_CONFIG: Record<string, { label: string; bgVar: string; textVar: string; borderVar: string; dotBg: string; icon: React.ComponentType<{ size?: number }> }> = {
-  Qualified:           { label: "Qualified",           bgVar: "--badge-qual-bg", textVar: "--badge-qual-text", borderVar: "--badge-qual-border", dotBg: "#3fb950", icon: CheckCircle2 },
-  "In Progress":       { label: "In Progress",         bgVar: "--badge-prog-bg", textVar: "--badge-prog-text", borderVar: "--badge-prog-border", dotBg: "#58a6ff", icon: Activity },
-  "Not Started":       { label: "Not Started",         bgVar: "--badge-none-bg", textVar: "--badge-none-text", borderVar: "--badge-none-border", dotBg: "#8b949e", icon: Clock },
-  Overdue:             { label: "Overdue",              bgVar: "--badge-over-bg", textVar: "--badge-over-text", borderVar: "--badge-over-border", dotBg: "#f85149", icon: XCircle },
-  Failed:              { label: "Failed",               bgVar: "--badge-fail-bg", textVar: "--badge-fail-text", borderVar: "--badge-fail-border", dotBg: "#fb8f44", icon: AlertTriangle },
-  "Requalification Due":   { label: "Requalification Due",   bgVar: "--badge-warn-bg",  textVar: "--badge-warn-text",  borderVar: "--badge-warn-border",  dotBg: "#e3b341", icon: AlertTriangle },
-  "Under Maintenance":     { label: "Under Maintenance",     bgVar: "--badge-maint-bg", textVar: "--badge-maint-text", borderVar: "--badge-maint-border", dotBg: "#a5b4fc", icon: Activity },
-  "Revalidation Required": { label: "Revalidation Required", bgVar: "--badge-reval-bg", textVar: "--badge-reval-text", borderVar: "--badge-reval-border", dotBg: "#f9a8d4", icon: AlertTriangle },
-};
-
-const PHASE_DOT: Record<string, string> = {
-  Passed: "#3fb950", Failed: "#f85149", "In Progress": "#58a6ff", Pending: "var(--border)",
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG["Not Started"];
-  return (
-    <span style={{ background: `var(${cfg.bgVar})`, color: `var(${cfg.textVar})`, borderColor: `var(${cfg.borderVar})` }}
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border">
-      <span style={{ background: cfg.dotBg }} className="w-1.5 h-1.5 rounded-full flex-shrink-0" />
-      {cfg.label}
-    </span>
-  );
-}
-
-function PhaseBar({ urs, dq, fat, sat, iq, oq, pq }: { urs: string; dq: string; fat: string; sat: string; iq: string; oq: string; pq: string }) {
-  const phases = [
-    { label: "URS", status: urs }, { label: "DQ", status: dq }, { label: "FAT", status: fat },
-    { label: "SAT", status: sat }, { label: "IQ", status: iq }, { label: "OQ", status: oq },
-    { label: "PQ", status: pq },
-  ];
-  return (
-    <div className="flex gap-0.5 items-center">
-      {phases.map((p) => (
-        <div key={p.label} className="flex flex-col items-center gap-0.5">
-          <div style={{ background: PHASE_DOT[p.status] || "var(--border)" }} className="w-5 h-1.5 rounded-sm" title={`${p.label}: ${p.status || "Pending"}`} />
-          <span style={{ color: "var(--text-muted)" }} className="text-[8px] font-semibold">{p.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+type Equipment = EquipmentListItem;
 
 export default function Dashboard() {
   const router = useRouter();
@@ -106,8 +60,8 @@ export default function Dashboard() {
   };
   const qualifiedPct = stats.total ? Math.round((stats.qualified / stats.total) * 100) : 0;
 
-  const inputStyle = { background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-primary)" };
-  const surfaceStyle = { background: "var(--bg-surface)", border: "1px solid var(--border)" };
+  const inputStyle = INPUT_STYLE;
+  const surfaceStyle = SURFACE_STYLE;
 
   return (
     <div style={{ background: "var(--bg-base)", minHeight: "100vh" }}>
@@ -233,7 +187,7 @@ export default function Dashboard() {
                       <td className="px-5 py-3.5"><PhaseBar urs={eq.urs_status} dq={eq.dq_status} fat={eq.fat_status} sat={eq.sat_status} iq={eq.iq_status} oq={eq.oq_status} pq={eq.pq_status} /></td>
                       <td className="px-5 py-3.5"><StatusBadge status={eq.status} /></td>
                       <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>
-                        {eq.next_due_date ? new Date(eq.next_due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                        {eq.next_due_date ? formatDate(eq.next_due_date) : "—"}
                       </td>
                     </tr>
                   ))}
