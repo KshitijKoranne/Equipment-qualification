@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, ensureDB } from "@/db";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     const breakdowns = await db.execute({
       sql: `SELECT * FROM breakdowns WHERE equipment_id = ? ORDER BY reported_date DESC, created_at DESC`,
@@ -25,6 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     const body = await req.json();
     const { root_cause, breakdown_type, severity, maintenance_start, maintenance_end,
@@ -98,6 +100,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     await db.execute({ sql: `DELETE FROM revalidation_phases WHERE breakdown_id = ?`, args: [id] });
     await db.execute({ sql: `DELETE FROM breakdowns WHERE id = ?`, args: [id] });

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, ensureDB } from "@/db";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     const body = await req.json();
     const { frequency, tolerance_months, scheduled_date, execution_date, protocol_number, approval_date, approved_by, status, remarks } = body;
@@ -21,6 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     await db.execute({ sql: `DELETE FROM requalifications WHERE id = ?`, args: [id] });
     return NextResponse.json({ message: "Deleted" });

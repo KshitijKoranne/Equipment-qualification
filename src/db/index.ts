@@ -127,3 +127,14 @@ export async function initDB() {
     FOREIGN KEY (breakdown_id) REFERENCES breakdowns(id)
   )`);
 }
+
+// Auto-initialize on first import — runs once per serverless instance
+let _initPromise: Promise<void> | null = null;
+export function ensureDB(): Promise<void> {
+  if (!_initPromise) _initPromise = initDB().catch((err) => {
+    console.error('[db] initDB failed:', err);
+    _initPromise = null; // allow retry on next request
+    throw err;
+  });
+  return _initPromise;
+}

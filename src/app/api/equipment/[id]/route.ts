@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, ensureDB } from "@/db";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     const equipment = await db.execute({ sql: `SELECT * FROM equipment WHERE id = ?`, args: [id] });
     if (!equipment.rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -46,6 +47,7 @@ async function generateEquipmentId(): Promise<string> {
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     const body = await req.json();
     const { name, type, department, location, manufacturer, model, serial_number, installation_date,
@@ -116,6 +118,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await ensureDB();
     const { id } = await params;
     const bds = await db.execute({ sql: `SELECT id FROM breakdowns WHERE equipment_id = ?`, args: [id] });
     for (const bd of bds.rows) {

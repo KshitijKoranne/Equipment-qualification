@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
+import { db, ensureDB } from "@/db";
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDB();
     const body = await req.json();
     const { equipment_id, breakdown_ref, reported_date, reported_by, description,
       breakdown_type, severity, validation_impact, impact_assessment, revalidation_phases } = body;

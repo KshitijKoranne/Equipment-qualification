@@ -66,12 +66,20 @@ export default function Dashboard() {
   const [filterDept, setFilterDept] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
 
+  const [fetchError, setFetchError] = useState("");
+
   const fetchEquipment = useCallback(async () => {
     setLoading(true);
+    setFetchError("");
     try {
       const res = await fetch("/api/equipment");
-      setEquipment(await res.json());
-    } catch (e) { console.error(e); }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      setEquipment(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setFetchError(e instanceof Error ? e.message : "Failed to load equipment");
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -189,6 +197,13 @@ export default function Dashboard() {
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div style={{ borderColor: "var(--spinner-track)", borderTopColor: "var(--spinner-head)" }} className="w-6 h-6 border-2 rounded-full animate-spin" />
+            </div>
+          ) : fetchError ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <p style={{ color: "var(--badge-over-text)" }} className="text-sm font-medium">Failed to load equipment</p>
+              <p style={{ color: "var(--text-muted)" }} className="text-xs max-w-md text-center">{fetchError}</p>
+              <button onClick={fetchEquipment} style={{ background: "var(--text-primary)", color: "var(--bg-surface)" }}
+                className="px-4 py-2 rounded-lg text-xs font-semibold mt-1 hover:opacity-90">Retry</button>
             </div>
           ) : filtered.length === 0 ? (
             <div className="py-20 text-center">
